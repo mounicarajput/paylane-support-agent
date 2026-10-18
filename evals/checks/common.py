@@ -114,7 +114,9 @@ FILLER = [
     r"\bfeel free to\b",
     r"\b(do not|don't) hesitate\b",
     r"\blet me know if (you|there)[^.?!]{0,40}\b(other|further|more|anything)\b",
+    r"\b(if|should) you (need|have|require|want)\b[^.?!]{0,40}\b(further|more|other|additional|any)\b[^.?!]{0,30}\b(assistance|help|questions?|support|information)\b",
     r"\bis there anything else\b",
+    r"\banything else (i|we) can (help|assist)\b",
     r"\bthank you for (your )?(patience|understanding|bringing)\b",
     r"\bfor any inconvenience\b",
 ]
@@ -150,7 +152,7 @@ TIMING = [
     r"\b(24|48|72)[- ]?hours?\b",
     r"\b\d+\s*(-|to)\s*\d+\s*(business |working )?(days?|hours?)\b",
     r"\b(business|working) days?\b",
-    r"\b(soon|shortly|tomorrow|momentarily|promptly|quickly)\b",
+    r"\b(soon|shortly|tomorrow|momentarily|promptly|quickly|right away|straight away|immediately|instantly|at once)\b",
     r"\bas soon as\b",
     r"\b(hear back|get back to you|be in touch|follow up with you)\b",
     r"\b(will|'ll|going to|should) (reach out|contact|email|call|text|get back|respond|reply|follow up)\b",

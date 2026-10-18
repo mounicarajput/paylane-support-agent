@@ -74,9 +74,3 @@ class MockAPI:
         return {"emails": [c["email"].lower() for c in self._customers],
                 "last4": [c["card_last4"] for c in self._customers]}
 
-    def raw_transaction(self, txn_id: str) -> Optional[dict]:
-        """Internal lookup for guards (includes owner). Not exposed to the model."""
-        for t in self._txns:
-            if t["txn_id"] == txn_id:
-                return dict(t)
-        return None

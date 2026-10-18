@@ -11,9 +11,6 @@ class Transcript:
     def add(self, kind: str, **data) -> None:
         self.events.append({"type": kind, **data})
 
-    def to_json(self) -> str:
-        return json.dumps({"meta": self.meta, "events": self.events}, indent=2, ensure_ascii=False)
-
     def to_markdown(self, title: str = "Conversation") -> str:
         lines = [f"# {title}", ""]
         for k, v in self.meta.items():

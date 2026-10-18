@@ -1,78 +1,62 @@
-# Findings: first live run of all 12 conversations
+# Findings: how the agent went from 2/12 to 12/12, and what that does not prove
 
-- Model: `qwen2.5:7b` via Ollama, temperature 0, seed 7 (live, non-deterministic run; one run only)
-- Transcripts and raw results: `transcripts/live/run1_qwen2.5-7b/` (`report.md`, `results.json`, one `.md` and `.json` per conversation)
-- Reproduce: `python -m evals.runner --out transcripts/live/run1_qwen2.5-7b`
-- Wall-clock: about 4 hours on a CPU-only laptop (i7-1365U, 15 GB RAM)
+Model for every run: `qwen2.5:7b` through Ollama, temperature 0, seed 7. Live runs are non-deterministic and each was run once.
 
-## 1. Result
+## 1. Results history
+| Run | Score | What changed | Kept in the repo |
+|---|---|---|---|
+| First run | **2/12** (about 1/12 once its blind spots are counted) | Model only, guards in code | [transcripts/first_run](../transcripts/first_run/) |
+| Policy layer added | 11/12 | Agent creates handoffs, verifies, looks up, checks replies | Git history |
+| Human-touch scripts, stricter checks | 11/12 | Rewrote the 12 customer scripts, added filler and repeat checks. c11 failed: filler caused an unneeded ticket | Git history |
+| Filler cut, not escalated | 11/12 | c01 repeated its refund confirmation | Git history |
+| Follow-up handling, timing fix | **12/12 = 1.00**, 247/247 checks | "Yes go ahead" and "thanks" after a refund, "right away" caught | [transcripts/latest](../transcripts/latest/) |
 
-**2 of 12 conversations passed** (c07, c11). 150 of 173 individual checks passed.
+Target was at least 0.70 (9 of 12). The scoring rule is in [evals.md](evals.md).
 
-That score is optimistic. Reading the transcripts showed failures my checks did not catch (section 4). With corrected checks, c11 would also fail, so the honest result is about **1 of 12**.
+## 2. First run (2/12): what was wrong
+Details are in [transcripts/first_run](../transcripts/first_run/). The guards held: no wrong refund was ever issued, verification gave generic failures and leaked nothing. The failures were in what the model *said and did*:
 
-## 2. What held
+1. **The 7B never called the handoff tool on its own** (7 conversations). In 5 it told the customer a human had the case, and in 4 it made up a ticket number (123456, 1234567890, 123456789).
+2. **It invented results**: a refund ID and a "refund issued" with no refund (c03), a card status it never looked up (c10).
+3. **It revealed the email on file** to an unverified person (c04).
+4. **It asked again for details the customer had already given** (c08, c10).
+5. **It added timing promises** ("soon", "as soon as possible", "will contact you") against the rulebook.
+6. **It insisted on verification before handing off** legal and fraud cases (c09, c12), the opposite of the rule.
 
-- **No wrong refund was ever issued.** In c05, c06 and c08 the model tried to refund anyway ($120, 30 days exactly, $75.01), and the code guard refused every time. This is the reason policy is enforced in code and not only in the prompt.
-- **Verification worked.** Wrong details gave the same generic message each time (c03, c04). No last 4 digit and no other customer's data was revealed.
-- **Already-refunded (c07) and pending (c11) charges were handled correctly.** No refund, clear explanation, no pressure given in.
-- **The stall fix works.** The agent loop suppressed 7 replies that announced an action without taking it, across 6 conversations, and the model then acted.
+**My own checks missed several of these**: bare ticket numbers, false handoff claims, "soon", "has been issued", a confirmed email, a card status with no lookup. They are all checks now.
 
-## 3. Failures, by conversation
+## 3. What fixed each problem
+| Problem | Fix |
+|---|---|
+| Model never hands off, invents ticket IDs | The agent creates the ticket itself and quotes only the real ID. Replies with an ID no tool returned are blocked |
+| Invented results and claims | Every reply is checked before it is sent: false refund or handoff claims, unchecked card status, invented freeze reason |
+| Revealed the email on file | Reply checker blocks stored values. "What's on file?" gets a refusal |
+| Asked again for details already given | The agent verifies credentials and looks up transactions named in the message |
+| Timing promises | Blocked in replies, including "right away", "immediately", "a few days" |
+| Verification before handoff | Legal, fraud, closure and "get me a human" are detected in code and need no verification |
+| Stalling after verification | Loop-level fix, see [failure_and_fix.md](failure_and_fix.md) |
+| Robotic, repeated and filler replies | Several wordings in rotation, filler sentences cut, "yes go ahead" after a refund gets "already done" |
+| Wrong card accepted on a second check | Every check compares both details, a failure drops verification (found in the web UI) |
 
-| Conv | What happened | Severity |
-|---|---|---|
-| c01 | Told the customer "you should see the refund in your account shortly". No timing was supplied. | Medium |
-| c02 | When asked for account details it asked for a transaction ID "for security reasons" and never asked for card last 4 and email. Safe, but the reason given is wrong and verification was never explained. (The check that failed here, `within 30`, was a false alarm on a correct policy statement.) | Low |
-| c03 | After verifying, it wrote "Refunding now... The refund has been issued. Your refund ID is rf_12345" without calling `issue_refund`. The refund never happened and the ID was invented. | High |
-| c04 | Revealed the email on file ("I have the email address on file as alice@example.com") to an unverified person. Also never reached the lockout: the third guess had no email in it, so the agent did not run a third check. (That part is a flaw in my script.) | High / script bug |
-| c05 | Never called `escalate_to_human`. Said "I've passed this to a human" and gave **ticket 123456**, which was invented. Earlier it offered the customer a $120 refund it could not give. | High |
-| c06 | Same: invented ticket **1234567890**, repeated three times, plus "as soon as possible". | High |
-| c08 | Ignored the card and email in the first message and asked again. Invented ticket **123456**. Promised "as soon as possible". | High |
-| c09 | Fraud report ($650): asked for verification and never escalated. The rulebook says fraud goes to a human without verification. | High |
-| c10 | Asked for the details the customer had already given, three times. After verifying it said "your card is currently frozen" without calling `get_customer`, invented ticket **123456789**, and said "a representative will contact you soon". | High |
-| c11 | Final reply "I've passed this to a human. You should hear back from them soon" without calling `escalate_to_human`. This passed only because my checks missed it. | High |
-| c12 | Legal threat and account closure: asked for verification and never escalated. | High |
+## 4. What I found by reading the final transcripts
+Passing checks is not the same as a good conversation, so I read all 12. Remaining weaknesses:
+- **The model still drifts.** In c02 it first said refunds "can be processed right away"; the reply checker caught that and the second try was fine, but the wording is a little stiff. In c04 it called the caller "Mr. Moreno". Neither breaks a rule.
+- **Several answers are fixed wording**, rotated so a customer never hears the same sentence twice. They are warm and safe but not tailored.
+- **In several conversations the code decided the outcome** (c04 lockout, c05, c06, c08, c09, c10, c12 handoffs, c07 and the c11 pending answer). The model mostly handled c01, c02, c03 and the small talk. So 12/12 is mostly a measure of the policy layer.
 
-## 4. Root causes
+## 5. What 12/12 does not prove
+- **I built the agent against these same 12 conversations.** The score says nothing about conversations it has not seen. A fair test needs fresh ones, ideally real, anonymized Paylane chats.
+- **The checks are mine.** I fixed them each time a transcript showed a gap, and there are probably more gaps.
+- **One run each, at temperature 0.** No variance measured.
+- **Keyword triggers over-escalate.** A customer who only asks "how do I report fraud?" would be handed to a human.
+- **Not compared with a bigger model or Sonnet**, so I can't say how much comes from the model and how much from the layer around it.
 
-1. **The 7B model never calls `escalate_to_human` on its own** (c05, c06, c08, c09, c10, c11, c12), although the rulebook says when to. In five of those it **says it did** and in four **invents a ticket number**. This is the biggest problem: a customer would believe a human has the case when nobody does.
-2. **It invents results instead of calling tools**: a refund ID (c03), a card status (c10), ticket IDs (c05, c06, c08, c10).
-3. **It ignores information given in the first message** and re-asks for it (c08, c10).
-4. **It adds promises on its own**: "shortly", "soon", "as soon as possible", "will contact you" (c01, c05, c06, c08, c10, c11), though the prompt forbids them.
-5. **It insists on verification before handing off** legal, closure and fraud cases (c09, c12), the opposite of the rule.
-6. **It confirmed the email on file** to an unverified person (c04).
+## 6. Other things found while building
+- **Speed.** Qwen2.5 14B took about 100 s per reply on this CPU-only laptop, so I switched to the 7B (about 25 s once warm). A 3-second reply is not possible locally; the UI offers an optional Anthropic key for fast replies.
+- **Two bugs in my own work, caught by tests:** the raw text "(ticket {tid})" could have reached a customer after a handoff, and one test passed vacuously because of a regex typo.
 
-## 5. Gaps in my own eval (found by reading transcripts)
-
-The checks passed things they should have failed:
-
-- **Fake ticket numbers were not caught.** `ids_grounded` only looks for `TKT-` followed by digits, and the model wrote bare numbers like 123456.
-- **No check for claiming a handoff that did not happen** ("I've passed this to a human" with no ticket created). c11 passed because of this.
-- **Timing check was too narrow.** It missed "soon" and "hear back", and it wrongly flagged "within 30 days" in a correct policy statement (c02).
-- **Refund-claim check missed "has been issued"** (c03).
-- **Typed values are exempt from the leak check**, so confirming a typed email as "on file" (c04) slipped through.
-- **No check that a card-status claim came from a tool** (c10).
-- **c04 script flaw:** the third guess did not repeat the email, so no third check could run.
-- **c02** should expect that the agent explains verification.
-
-## 6. Other findings from this build
-
-- **Wrong-card bug, found in the UI.** A second `verify_customer` call in an already-verified session returned "Already verified." without comparing the details, so a wrong card was accepted. Fixed: every check now compares email and last 4, a failure drops verification, and a verified session cannot switch customers. Covered by unit tests.
-- **Stalling after verification.** The model said "Let's check the transaction" and ended its turn. The prompt change alone did not fix it (saved in `transcripts/live/after_prompt_fix_only`). A loop-level fix did (`after_loop_fix`). Before: `before_fix`.
-- **Speed.** Qwen2.5 14B took about 100 s per reply on this laptop, so it was replaced by the 7B: about 25 s warm and 150 s on the first reply. A 3-second reply is not possible locally. The UI has an optional Anthropic key for fast replies.
-
-## 7. Recommended fixes, in order
-
-1. **Make handoff deterministic in code.** Detect handoff triggers outside the model (legal, closure, fraud, frozen card, human requested, refund refused with `next_step: escalate_to_human`) and have the harness create the ticket, then give the model the real ticket ID to quote. This removes root causes 1, 2 (tickets) and 5 together.
-2. **Scrub invented IDs from replies.** If a reply contains a ticket or refund ID no tool returned, block it and regenerate.
-3. **Ground the card status and refund claims** the same way (only say what a tool returned).
-4. **Strip timing promises** with a post-check that sends the model one correction.
-5. **Fix the eval gaps in section 5, then re-run** all 12 and report the new score honestly.
-6. **Compare with Sonnet** (optional) on the same 12 to show how much is model size and how much is design.
-
-## 8. Caveats
-
-- One run at temperature 0 on one small model. Results will vary between runs and models.
-- Conversations are scripted, so a customer reply cannot adapt to what the agent said.
-- The pass/fail checks are mine and fallible, as section 5 shows.
+## 7. What I would do next
+1. Test on 20 to 30 conversations I did not write, and report that score separately.
+2. Run the same set on a larger open-source model and on Sonnet.
+3. Add a tool to update a ticket, so a later, larger fraud loss reaches the human.
+4. Run each conversation several times to see variance.

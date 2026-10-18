@@ -83,9 +83,14 @@ class Agent:
                 self.messages.append({"role": "user", "content": NUDGE})
                 continue
 
-            problem = policy.check_reply(reply.text, self.registry)
+            text = policy.strip_filler(reply.text)  # filler is cut, not worth a retry or a handoff
+            if text != reply.text.strip():
+                self.transcript.add("note", text=f"filler removed from: {reply.text!r}")
+                self.messages[-1]["content"] = text
+            problem = policy.check_reply(text, self.registry) if text else policy.Violation(
+                "empty_reply", "Your reply was only filler. Answer what the customer said, briefly.")
             if problem is None:
-                return self._finish(reply.text)
+                return self._finish(text)
             self.transcript.add("note", text=f"reply blocked ({problem.name}): {reply.text!r}")
             if corrections < MAX_CORRECTIONS:
                 corrections += 1
@@ -115,6 +120,14 @@ class Agent:
 
         if state.handed_off:
             return self._after_handoff_reply(text)
+
+        # "Yes please go ahead" / "thanks" after a refund that already went through: don't say it all again.
+        refunds = self.registry.api.refunds
+        if refunds and len(text.split()) <= 8 and not policy.extract_txn_ids(text):
+            if policy.GO_AHEAD.search(text):
+                return self._pick("done", policy.REFUND_ALREADY_DONE).format(rid=refunds[-1]["refund_id"])
+            if policy.THANKS.search(text):
+                return self._pick("welcome", policy.YOURE_WELCOME)
 
         creds = policy.extract_credentials(text)
         if creds and (not state.verified or creds != self._last_creds):
@@ -228,6 +241,8 @@ class Agent:
         state = self.registry.state
         if state.handed_off:
             return self._pick("already", policy.ALREADY_HANDED_OFF).format(tid=state.handoff_ticket_id)
+        if problem.name == "empty_reply":
+            return policy.ACK
         if problem.name == "false_handoff_claim":
             return policy.OFFER_HANDOFF  # don't open a ticket just because the model got ahead of itself
         return self._handoff("other", "Agent could not produce a safe reply.")

@@ -1,6 +1,4 @@
 """OPTIONAL provider: Anthropic Sonnet. Used only when PROVIDER=anthropic and a key is set."""
-import json
-
 from .base import LLMResponse, Provider, ProviderError, ToolCall
 
 

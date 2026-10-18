@@ -6,7 +6,6 @@ Results from a real model are non-deterministic; label them as live runs.
 """
 import argparse
 import json
-import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -57,7 +56,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", nargs="*", help="conversation ids to run")
     ap.add_argument("--provider", choices=["ollama", "anthropic"])
-    ap.add_argument("--out", help="output directory (default transcripts/live/<provider>-<model>)")
+    ap.add_argument("--out", help="output directory (default transcripts/latest)")
     ap.add_argument("--target", type=float, default=TARGET, help="share of conversations that must pass (default 0.70)")
     args = ap.parse_args(argv)
 
@@ -69,8 +68,7 @@ def main(argv=None) -> int:
     convs = load_conversations()
     if args.only:
         convs = [c for c in convs if c["id"] in args.only]
-    slug = re.sub(r"[^\w.-]+", "_", f"{provider.name}-{provider.model}")
-    out = Path(args.out) if args.out else ROOT / "transcripts" / "live" / slug
+    out = Path(args.out) if args.out else ROOT / "transcripts" / "latest"
     out.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -79,7 +77,6 @@ def main(argv=None) -> int:
         res = evaluate(run, conv)
         results.append(res)
         (out / f"{conv['id']}.md").write_text(run.transcript.to_markdown(conv["title"]), encoding="utf-8")
-        (out / f"{conv['id']}.json").write_text(run.transcript.to_json(), encoding="utf-8")
         print(f"{'PASS' if res['passed'] else 'FAIL'}  {conv['id']}")
         for c in res["checks"]:
             if not c["ok"]:

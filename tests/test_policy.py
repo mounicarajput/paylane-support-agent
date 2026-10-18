@@ -330,7 +330,9 @@ def test_corporate_filler_and_hidden_timing_are_blocked():
     for text, name in [("All done! Feel free to ask if you need anything.", "corporate_filler"),
                        ("Thank you for your patience.", "corporate_filler"),
                        ("It may take a few days to reflect on your account.", "timing_promise"),
-                       ("You'll see it in a few days.", "timing_promise")]:
+                       ("You'll see it in a few days.", "timing_promise"),
+                       ("For $75 or less, we can process it right away.", "timing_promise"),
+                       ("Your refund is issued immediately.", "timing_promise")]:
         assert policy.check_reply(text, reg()).name == name
 
 
@@ -339,3 +341,30 @@ def test_failed_verification_wording_varies_and_never_names_a_field():
     assert len(seen) == 2
     for v in seen:
         assert policy.check_reply(v, reg()) is None  # passes our own leak and field checks
+
+
+# ---- filler is cut, not escalated ----------------------------------------------------------
+@pytest.mark.parametrize("raw,clean", [
+    ("The charge is pending. Is there anything else you need help with?", "The charge is pending."),
+    ("Done. If you need any further assistance, let me know.", "Done."),
+    ("Your refund went through, feel free to ask if you need more.", "Your refund went through."),
+    ("It's pending, and thank you for your patience.", "It's pending."),
+    ("All good here.", "All good here."),
+])
+def test_strip_filler(raw, clean):
+    assert policy.strip_filler(raw) == clean
+    assert policy.check_reply(policy.strip_filler(raw), reg()) is None
+
+
+def test_filler_tail_is_stripped_without_a_retry_or_a_ticket():
+    a = agent(say("That charge is still pending, so I can't refund it. Is there anything else you need help with?"))
+    reply = a.respond("hello")
+    assert reply == "That charge is still pending, so I can't refund it."
+    assert a.provider.calls == 1 and a.registry.api.tickets == []
+
+
+def test_reply_that_is_only_filler_gets_a_retry_then_a_short_ack_never_a_ticket():
+    a = agent(say("Feel free to ask if you need anything else."))
+    assert a.respond("thanks!") == policy.ACK and a.registry.api.tickets == []
+    b = agent(say("Feel free to ask."), say("You're welcome!"))
+    assert b.respond("thanks!") == "You're welcome!"

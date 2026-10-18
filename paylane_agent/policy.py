@@ -153,6 +153,14 @@ PENDING_AGAIN = [
     "I'm sorry, I can't refund a pending charge, and I don't have a way around that.",
     "It's still pending, so a refund isn't possible from my side right now.",
 ]
+GO_AHEAD = re.compile(r"\b(yes|yeah|yep|go ahead|please|do it|proceed|refund it)\b", I)
+THANKS = re.compile(r"\b(thanks|thank you|thx|cheers|perfect|great|awesome)\b", I)
+REFUND_ALREADY_DONE = [
+    "That already went through, so you're all set. Your refund ID is {rid}.",
+    "It's done already: the refund went through (ID {rid}).",
+    "You don't need to do anything else, the refund is already done (ID {rid}).",
+]
+YOURE_WELCOME = ["You're welcome!", "Glad I could help.", "Anytime!"]
 NO_REVEAL = [
     "I can't share details from an account, not even the ones on file. If this is your account, send me the last 4 digits of your card and the email on it, and I can check them.",
     "Sorry, I can't read out what's on file for an account, to anyone. The only way in is for you to give me the card's last 4 digits and the email, and I can check them.",
@@ -165,7 +173,8 @@ VERIFY_FAILED = [
     "Those still don't match, I'm afraid. Could you double-check the card's last 4 digits and the email, and send them again?",
     "Sorry, that doesn't match either. Please check both the last 4 digits and the email and try once more.",
 ]
-OFFER_HANDOFF ="Would you like me to pass this to a human to take a look?"
+ACK = "That's all taken care of."  # last resort when a reply was nothing but filler
+OFFER_HANDOFF = "Would you like me to pass this to a human to take a look?"
 ASK_TO_VERIFY = ("I can help with that once I've verified you. Please send the last 4 digits of your card "
                  "and the email on your account.")
 
@@ -180,8 +189,10 @@ class Violation:
 CORPORATE = [
     r"\bfeel free to\b",
     r"\bplease (do not|don't) hesitate\b",
-    r"\bplease let me know if (you|there)[^.?!]{0,40}\b(other|further|more|anything)\b",
+    r"\blet me know if (you|there)[^.?!]{0,40}\b(other|further|more|anything)\b",
+    r"\b(if|should) you (need|have|require|want)\b[^.?!]{0,40}\b(further|more|other|additional|any)\b[^.?!]{0,30}\b(assistance|help|questions?|support|information)\b",
     r"\bis there anything else\b",
+    r"\banything else (i|we) can (help|assist)\b",
     r"\bthank you for (your )?(patience|understanding|bringing)\b",
     r"\bfor any inconvenience\b",
 ]
@@ -193,7 +204,7 @@ TIMING = [
     r"\b\d+\s*(-|to)\s*\d+\s*(business )?(days?|hours?)\b",
     r"\b(24|48|72)[- ]?hours?\b",
     r"\bbusiness days?\b",
-    r"\b(soon|shortly|tomorrow|momentarily)\b",
+    r"\b(soon|shortly|tomorrow|momentarily|right away|straight away|immediately|instantly|at once)\b",
     r"\bas soon as\b",
     r"\b(hear back|get back to you|be in touch|follow up with you)\b",
     r"\b(will|'ll|going to|should) (reach out|contact|email|call|text|respond|reply)\b",
@@ -229,6 +240,20 @@ WHICH_FIELD = [
 ]
 INVENTED_TICKET = re.compile(r"\b(?:ticket|case|reference)\b[^.\n]{0,25}?\b(TKT-\d+|\d{4,})\b", I)
 INVENTED_REFUND = re.compile(r"\b(rf_\d+)\b|\brefund (?:id|number)\b[^.\n]{0,15}?\b(\d{4,})\b", I)
+
+
+def strip_filler(text: str) -> str:
+    """Drop corporate-filler sentences, or the filler tail of a sentence ("Done, feel free to ask")."""
+    kept = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        hit = next((m for p in CORPORATE if (m := re.search(p, sentence, I))), None)
+        if hit is None:
+            kept.append(sentence)
+            continue
+        head = re.sub(r"[\s,;:\-]+(and|but|so)?$", "", sentence[:hit.start()].rstrip(), flags=I)
+        if len(head.split()) >= 2:
+            kept.append(head + ".")
+    return " ".join(kept).strip()
 
 
 def _hit(patterns, text):

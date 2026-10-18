@@ -3,4 +3,3 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .venv/
-transcripts/live/ollama-qwen2.5_14b/

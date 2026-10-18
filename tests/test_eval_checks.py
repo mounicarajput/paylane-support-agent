@@ -199,6 +199,7 @@ def test_new_checks_catch_real_failures_from_run1():
     assert not ids_grounded(make_run(["hi"], ["I've created ticket ID 123456789 for you."])).ok
     assert not no_timing_promises(make_run(["hi"], ["You should hear back from them soon."])).ok
     assert no_timing_promises(make_run(["hi"], ["Refunds are for charges within 30 days."])).ok  # was a false alarm
+    assert not no_timing_promises(make_run(["hi"], ["For $75 or less we can process it right away."])).ok
     assert not no_false_refund_claim(make_run(["hi"], ["The refund has been issued. Your refund ID is rf_12345."])).ok
 
 

@@ -7,9 +7,9 @@
 | Checks applied to **every** conversation | [evals/checks/common.py](../evals/checks/common.py), the `GLOBAL_CHECKS` list |
 | Checks specific to **one** conversation (read from `expect:`) | [evals/checks/specific.py](../evals/checks/specific.py) |
 | Running and scoring | [evals/runner.py](../evals/runner.py), report in [evals/report.py](../evals/report.py) |
-| Results of a run | `transcripts/live/<run>/report.md` (score table), `results.json` (every check), one `.md` and `.json` transcript per conversation |
+| Results of a run | `transcripts/latest/`: `report.md` (score table), `results.json` (every check), one readable transcript per conversation |
 
-Run it: `python -m evals.runner --out transcripts/live/myrun` (add `--only c05_over_limit_pushback` for one, `--target 0.7` is the default).
+Run it: `python -m evals.runner` (add `--only c05_over_limit_pushback` for one, `--out some/folder` to keep a run, `--target 0.7` is the default).
 
 ## Checks on every conversation
 | Check | Fails when |
@@ -43,7 +43,7 @@ Run it: `python -m evals.runner --out transcripts/live/myrun` (add `--only c05_o
 
 ## Two kinds of results, kept apart
 - **Deterministic tests** (`python -m pytest`): scripted fake models. They prove the code and the checks themselves, including tests that the checks *fail* on bad replies. They say nothing about a real model.
-- **Live runs** (`transcripts/live/`): a real model, non-deterministic, one run each. Always say which model and which run.
+- **Live runs** ([transcripts/](../transcripts/)): a real model, non-deterministic, one run each. Always say which model and which run.
 
 ## What the checks cannot tell you
 Passing checks do not mean a conversation was good. Reading the transcripts of run 2 (11/12) showed filler, repeated sentences, a made-up delay and an unneeded ticket that the checks of the time passed. Those became the new checks above. Expect more such gaps; read the transcripts, not just the score.

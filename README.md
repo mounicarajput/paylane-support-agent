@@ -1,52 +1,63 @@
 # Paylane support agent
 
-A customer-support agent for Paylane (cards, transfers, refunds), built for the Fini setup exercise. An LLM talks to the customer and calls four mock API tools. **Policy is enforced in code**, so the model cannot refund when the rules say no, even if it tries.
+A customer-support agent for Paylane (cards, transfers, refunds), built for the Fini setup exercise. A small open-source model talks to the customer and calls four mock API tools. **Code enforces the policy**, so the agent cannot refund when the rules say no, and cannot say things it shouldn't, however the customer pushes.
 
-**Status, plainly:** the guards, verification, evals and UI work and are tested. The first live run of the 12 conversations on the open-source model scored **2/12**; the main problem is that the 7B model does not reliably hand off to a human and invents ticket numbers. Details and the fix plan are in [docs/findings.md](docs/findings.md). Not launch-ready.
+## Where it stands
+- **Latest live run: 12/12 conversations pass (1.00), target 0.70.** Model `qwen2.5:7b`, 247/247 checks. See [transcripts/latest](transcripts/latest/).
+- **How we got there:** the first run scored 2/12; the main problem was that the model never reliably handed off and invented ticket numbers. Fixing that took a code-enforced policy layer. Full story in [docs/findings.md](docs/findings.md).
+- **Read this before trusting 12/12:** I built and tuned the agent against these same 12 conversations, so the score does not show how it handles conversations it has not seen. In several of them the code, not the model, decides the outcome. See [docs/tradeoffs.md](docs/tradeoffs.md).
+- 158 deterministic tests pass. They use fake models and prove the code and the checks, not the model.
 
-## Models
-- **Primary (open source, local, no key):** `qwen2.5:7b` through [Ollama](https://ollama.com). On a CPU-only laptop, expect about 25 s per reply, and longer on the first one.
-- **Optional (fast):** Anthropic Sonnet. Set `PROVIDER=anthropic` and `ANTHROPIC_API_KEY`, or paste a key in the web UI. No key is needed to run anything else, and no Fini key is needed.
-
-## Setup
+## Quick start
 ```
-python -m pip install -r requirements.txt        # Python 3.10+
-ollama pull qwen2.5:7b                           # primary model
-python -m pip install anthropic                  # only for the optional Anthropic provider
-cp .env.example .env                             # optional: change model, host or provider
+python -m pip install -r requirements.txt     # Python 3.10+
+ollama pull qwen2.5:7b                        # primary model, open source, no API key
+python -m paylane_agent serve                 # web chat at http://127.0.0.1:8000
 ```
+Optional faster replies: paste an Anthropic API key in the web UI, or set `PROVIDER=anthropic` and `ANTHROPIC_API_KEY` (`pip install anthropic`). Nothing else needs a key. Copy `.env.example` to `.env` to change the model or host.
 
-## Run
-```
-python -m paylane_agent serve                    # web chat at http://127.0.0.1:8000
-python -m paylane_agent serve --hide-internals   # customer view, no tool/session panel
-python -m paylane_agent chat                     # terminal chat
-python -m paylane_agent replay c05_over_limit_pushback   # run and score one conversation
-python -m evals.runner                           # all 12 conversations, writes transcripts + report
-python -m evals.runner --only c01_simple_refund c10_frozen_card --out transcripts/live/mine
-python -m pytest -q                              # 79 deterministic tests (fake models, no Ollama needed)
-```
-Test customers: Alice (card `4242`, `alice@example.com`, active), Ben (`1111`, `ben@example.com`, frozen), Chloe (`9876`, `chloe@example.com`). The test clock is fixed at **2026-10-15 12:00 UTC**; try `txn_1001` ($40, refundable) and `txn_1002` ($120, must escalate).
+The 7B model on a laptop CPU takes about 25 s per reply once warm (more on the first). The UI says so while it is in use.
 
-## How it works
-```
-customer -> agent loop -> LLM -> tool call -> registry -> guards -> mock API
-                                      trusted session state (verified, failed checks, handoff)
-```
-- **Verification is code, not the model.** `verify_customer` takes what the customer typed. Email and last 4 must both match. Any mismatch returns one generic message, with no stored value revealed. Three failures lock account actions and create a handoff. A failed re-check also drops an earlier verification.
-- **Refund guard** ([tools/guards.py](paylane_agent/tools/guards.py)): verified, the customer's own transaction, settled, full amount, $75 or less, strictly under 30 days old (exactly 30 escalates), never refunded. No partial or split refunds.
-- **After a handoff**, account actions for that issue are blocked and the ticket is reused.
-- **Stall fix:** if a reply announces an action without calling a tool, the loop suppresses it and nudges the model once or twice.
+Test customers: Alice (card `4242`, `alice@example.com`), Ben (`1111`, `ben@example.com`, card frozen), Chloe (`9876`, `chloe@example.com`). Fixed test date: 2026-10-15 12:00 UTC. Try `txn_1001` ($40, refundable) and `txn_1002` ($120, goes to a human).
 
-## Evals
-12 scripted conversations in [conversations/conversations.yaml](conversations/conversations.yaml), each with an expected outcome, scored by [evals/](evals/): checks on tickets, refunds, session state, tool calls, leaked values, invented IDs, timing promises and more. A conversation passes only if every check passes.
+## Commands
+| Command | What it does |
+|---|---|
+| `python -m paylane_agent serve` | Web chat. `--hide-internals` for the customer view |
+| `python -m paylane_agent chat` | Terminal chat |
+| `python -m paylane_agent replay c05_over_limit_pushback` | Run and score one conversation |
+| `python -m evals.runner` | Run all 12, write transcripts and the score to `transcripts/latest` |
+| `python -m pytest -q` | The 158 deterministic tests |
 
-Two kinds of results, kept separate:
-- **Deterministic:** `pytest`, with scripted fake models. These prove the code, not the model.
-- **Live model runs:** `transcripts/live/`. Non-deterministic, one run each. `run1_qwen2.5-7b` is the full 12-conversation run. `before_fix`, `after_prompt_fix_only` and `after_loop_fix` show the failure and fix described in [docs/failure_and_fix.md](docs/failure_and_fix.md).
+## Repo map
+```
+paylane_agent/        the agent
+  agent.py              runs a turn: policy layer, model, tools, reply checks
+  policy.py             handoff triggers, fixed replies, the reply checker
+  prompts/              system prompt and rulebook given to the model
+  tools/                the 4 mock API tools (+ verify_customer), guards, registry
+  session/              verification state, fixed test clock
+  providers/            Ollama (primary) and Anthropic (optional)
+  web/, cli.py          web chat and command line
+conversations/        the 12 customer conversations and what each should lead to
+evals/                the pass/fail checks, runner and score
+data/                 mock customers and transactions
+tests/                deterministic tests
+transcripts/          real model runs: latest/, first_run/, failure_and_fix/
+docs/                 the write-ups below
+```
 
 ## Docs
-[findings](docs/findings.md) · [architecture](docs/architecture.md) · [edge cases chosen](docs/edge_cases.md) · [failure and fix](docs/failure_and_fix.md) · [tradeoffs](docs/tradeoffs.md) · [questions for Paylane](docs/questions_for_paylane.md) · [customer note](docs/customer_note.md)
+| Read this | For |
+|---|---|
+| [customer_note.md](docs/customer_note.md) | The email to the Paylane head of support |
+| [edge_cases.md](docs/edge_cases.md) | The 12 conversations and why each edge case was chosen |
+| [evals.md](docs/evals.md) | Every check, how the score is computed |
+| [failure_and_fix.md](docs/failure_and_fix.md) | One failure found and how it was fixed |
+| [findings.md](docs/findings.md) | Results history and what went wrong along the way |
+| [architecture.md](docs/architecture.md) | How the pieces fit |
+| [tradeoffs.md](docs/tradeoffs.md) | Decisions, limits, what is still open |
+| [questions_for_paylane.md](docs/questions_for_paylane.md) | What the brief left open, and the safe default used |
 
 ## AI assistance disclosure
-Built with Claude Code (Anthropic) as a coding assistant. I can explain and change every part of it. Design choices (policy in code, verification as trusted state) and the review of the live transcripts are discussed in the docs.
+Built with Claude Code (Anthropic) as a coding assistant. I can explain and change every part of it. The design choices (policy in code, verification as trusted state) and the review of the live transcripts are written up in the docs.
