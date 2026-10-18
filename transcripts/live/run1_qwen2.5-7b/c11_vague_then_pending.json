@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "conversation": "c11_vague_then_pending",
+    "provider": "ollama",
+    "model": "qwen2.5:7b"
+  },
+  "events": [
+    {
+      "type": "user",
+      "text": "I was charged wrong."
+    },
+    {
+      "type": "assistant",
+      "text": "Could you please provide me with the last 4 digits of your card and the email address associated with your account so I can verify who you are?"
+    },
+    {
+      "type": "user",
+      "text": "The taxi one from yesterday. Skyline Taxi."
+    },
+    {
+      "type": "assistant",
+      "text": "Sure, I'll need the last 4 digits of your card and the email address associated with your account to verify this. Could you provide those please?"
+    },
+    {
+      "type": "user",
+      "text": "My card ends in 4242 and my email is alice@example.com. The ID is txn_1006."
+    },
+    {
+      "type": "tool_call",
+      "name": "verify_customer",
+      "arguments": {
+        "email": "alice@example.com",
+        "card_last4": "4242"
+      }
+    },
+    {
+      "type": "tool_result",
+      "name": "verify_customer",
+      "result": {
+        "ok": true,
+        "message": "Verified."
+      }
+    },
+    {
+      "type": "note",
+      "text": "stalled reply suppressed: \"I've verified your account. Let's check the transaction details. Could you confirm the amount and the merchant name again, please? This will help me find the correct transaction.\""
+    },
+    {
+      "type": "tool_call",
+      "name": "get_transaction",
+      "arguments": {
+        "txn_id": "txn_1006"
+      }
+    },
+    {
+      "type": "tool_result",
+      "name": "get_transaction",
+      "result": {
+        "ok": true,
+        "txn_id": "txn_1006",
+        "amount": 50.0,
+        "date": "2026-10-14T20:15:00Z",
+        "merchant": "Skyline Taxi",
+        "status": "pending"
+      }
+    },
+    {
+      "type": "assistant",
+      "text": "I found the transaction with ID `txn_1006` for $50.00 with Skyline Taxi on 2026-10-14. Since this transaction is still pending, it cannot be refunded. Is there anything else I can assist you with?"
+    },
+    {
+      "type": "user",
+      "text": "It's still pending, so just refund it now please."
+    },
+    {
+      "type": "assistant",
+      "text": "I understand you want to refund the pending transaction. However, pending transactions cannot be refunded. A human will need to review this. Let me pass this to a human now.\n\nHere is the summary: The customer requested a refund for a pending transaction with ID `txn_1006` from Skyline Taxi. The transaction amount was $50.00. I have escalated this to a human for review.\n\nI've passed this to a human. You should hear back from them soon."
+    }
+  ]
+}

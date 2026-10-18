@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paylane Support</title>
+<style>
+  :root { --brand:#4f46e5; --bg:#f4f5f9; --card:#fff; --text:#1c1e26; --muted:#6b7080; --line:#e3e5ee;
+          --pill:#eceef5; --okbg:#d9f5e3; --okfg:#126b35; --badbg:#fde8e8; --badfg:#9b1c1c; --toolbg:#fafbfd;
+          --notebg:#fff7e0; --notefg:#7a5b00; --notefast:#e6f4ea; --notefastfg:#17622f; }
+  [data-theme="dark"] { --brand:#6366f1; --bg:#0f1117; --card:#181b24; --text:#e8eaf0; --muted:#9aa0b4; --line:#2a2e3b;
+          --pill:#262a38; --okbg:#173d27; --okfg:#7ee2a3; --badbg:#4a1d1d; --badfg:#ffb4b4; --toolbg:#1d212c;
+          --notebg:#3a2f10; --notefg:#f0d28a; --notefast:#16341f; --notefastfg:#8fe3ab; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; }
+  .chat { flex:1; display:flex; flex-direction:column; min-width:0; }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:12px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; }
+  header .sub { color:var(--muted); font-size:12px; }
+  .spacer { margin-left:auto; }
+  .note { padding:8px 20px; font-size:13px; background:var(--notebg); color:var(--notefg); border-bottom:1px solid var(--line); }
+  .note.fast { background:var(--notefast); color:var(--notefastfg); }
+  #log { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:75%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; word-wrap:break-word; }
+  .user { align-self:flex-end; background:var(--brand); color:#fff; border-bottom-right-radius:4px; }
+  .agent { align-self:flex-start; background:var(--card); border:1px solid var(--line); border-bottom-left-radius:4px; }
+  .error { align-self:center; background:var(--badbg); color:var(--badfg); font-size:13px; }
+  .typing { color:var(--muted); font-style:italic; }
+  form#form { display:flex; gap:10px; padding:14px 20px; background:var(--card); border-top:1px solid var(--line); }
+  input[type=text], input[type=password] { flex:1; padding:11px 14px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--bg); color:var(--text); }
+  input:focus { outline:2px solid var(--brand); border-color:transparent; }
+  button { padding:9px 16px; border:0; border-radius:10px; background:var(--brand); color:#fff; font:inherit; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--brand); border:1px solid var(--brand); }
+  button.icon { padding:8px 11px; }
+  button:disabled { opacity:.5; cursor:default; }
+  aside { width:320px; background:var(--card); border-left:1px solid var(--line); padding:16px; overflow-y:auto; font-size:13px; }
+  aside h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  .state { display:grid; grid-template-columns:1fr auto; gap:4px 8px; margin-bottom:20px; }
+  .pill { padding:1px 8px; border-radius:999px; background:var(--pill); font-size:12px; }
+  .pill.ok { background:var(--okbg); color:var(--okfg); } .pill.bad { background:var(--badbg); color:var(--badfg); }
+  .tool { border:1px solid var(--line); border-radius:8px; padding:8px; margin-bottom:8px; font-family:ui-monospace,Consolas,monospace; font-size:12px; word-break:break-all; }
+  .tool b { color:var(--brand); }
+  .tool.res { background:var(--toolbg); }
+  .hint { color:var(--muted); }
+  dialog { border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--text); padding:22px; width:min(440px,92vw); }
+  dialog::backdrop { background:rgba(0,0,0,.5); }
+  dialog h3 { margin:0 0 6px; }
+  dialog p { margin:6px 0; font-size:13px; color:var(--muted); }
+  dialog .row { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  #keyErr { color:var(--badfg); min-height:18px; font-size:13px; margin-top:8px; }
+  @media (max-width:800px) { aside { display:none; } }
+</style>
+</head>
+<body>
+<div class="chat">
+  <header>
+    <div><h1>Paylane Support</h1><div class="sub" id="model"></div></div>
+    <span class="spacer"></span>
+    <button class="ghost" id="keyBtn" type="button">Add Anthropic API key for fast responses</button>
+    <button class="ghost icon" id="theme" type="button" title="Switch bright / dark mode" aria-label="Switch bright or dark mode"></button>
+    <button class="ghost" id="reset" type="button">New conversation</button>
+  </header>
+  <div class="note" id="note" role="status"></div>
+  <div id="log" aria-live="polite"></div>
+  <form id="form" autocomplete="off">
+    <input type="text" id="input" placeholder="Type your message..." maxlength="1000" autofocus>
+    <button id="send" type="submit">Send</button>
+  </form>
+</div>
+<aside id="panel">
+  <h2>Session</h2>
+  <div class="state">
+    <span>Verified</span><span class="pill" id="s-verified">no</span>
+    <span>Failed checks</span><span class="pill" id="s-failed">0</span>
+    <span>Locked</span><span class="pill" id="s-locked">no</span>
+    <span>Handoff ticket</span><span class="pill" id="s-ticket">none</span>
+  </div>
+  <h2>Agent activity</h2>
+  <div id="tools"><div class="hint">Tool calls appear here.</div></div>
+</aside>
+
+<dialog id="keyDialog">
+  <h3>Faster responses with Anthropic</h3>
+  <p>Paste your Anthropic API key to use Claude Sonnet instead of the local model. Replies usually arrive in a few seconds.</p>
+  <p><b>Privacy:</b> while this is on, your messages in this chat are sent to Anthropic. The key is kept in this server's memory for this browser session only. It is not saved to disk or shown again.</p>
+  <input type="password" id="keyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+  <div id="keyErr"></div>
+  <div class="row">
+    <button id="keyConnect" type="button">Connect</button>
+    <button class="ghost" id="keyLocal" type="button">Use local model</button>
+    <button class="ghost" id="keyCancel" type="button">Cancel</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const log = $("log"), input = $("input"), send = $("send");
+let sid = crypto.randomUUID(), local = true;
+
+/* theme: follow the system until the user picks one */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("theme").textContent = t === "dark" ? "☀ Bright" : "🌙 Dark";
+}
+applyTheme(localStorage.getItem("theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+$("theme").addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", t); applyTheme(t);
+});
+
+function add(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+}
+function pill(el, text, cls) { el.textContent = text; el.className = "pill " + (cls || ""); }
+function setState(s) {
+  pill($("s-verified"), s.verified ? "yes" : "no", s.verified ? "ok" : "");
+  pill($("s-failed"), s.failed_checks, s.failed_checks ? "bad" : "");
+  pill($("s-locked"), s.locked ? "yes" : "no", s.locked ? "bad" : "");
+  pill($("s-ticket"), s.ticket_id || "none", s.ticket_id ? "ok" : "");
+}
+function addTools(tools) {
+  const box = $("tools");
+  if (box.querySelector(".hint")) box.innerHTML = "";
+  for (const t of tools) {
+    const d = document.createElement("div");
+    d.className = "tool" + (t.result ? " res" : "");
+    const name = document.createElement("b"); name.textContent = t.name;
+    d.appendChild(name);
+    d.appendChild(document.createTextNode((t.result ? " → " : " ") + JSON.stringify(t.result || t.arguments)));
+    box.appendChild(d);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+function clearAll() {
+  log.innerHTML = ""; $("tools").innerHTML = '<div class="hint">Tool calls appear here.</div>';
+  setState({verified:false, failed_checks:0, locked:false, ticket_id:null});
+  add("agent", "Hi, I'm Paylane's support assistant. How can I help?");
+}
+
+function showInfo(i) {
+  local = i.local;
+  $("model").textContent = i.provider + " · " + i.model;
+  if (!i.show_internals) $("panel").style.display = "none";
+  const note = $("note");
+  if (local) {
+    note.className = "note";
+    note.textContent = "You're using a local open-source model (" + i.model + "). Replies can take a while: anywhere from several seconds to a couple of minutes, depending on your computer. Add an Anthropic API key above for faster replies.";
+    $("keyBtn").textContent = "Add Anthropic API key for fast responses";
+  } else {
+    note.className = "note fast";
+    note.textContent = "Fast mode: replies come from Anthropic (" + i.model + "). Your messages in this chat are sent to Anthropic.";
+    $("keyBtn").textContent = "Fast mode on · change";
+  }
+}
+const loadInfo = () => fetch("/api/info?sid=" + sid).then(r => r.json()).then(showInfo);
+loadInfo(); clearAll();
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ""; add("user", text);
+  send.disabled = input.disabled = true;
+  const wait = add("agent typing", local ? "Thinking... a local model can take a while, thanks for waiting." : "Typing...");
+  try {
+    const r = await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"},
+                                        body: JSON.stringify({session_id: sid, message: text})});
+    const data = await r.json();
+    wait.remove();
+    if (!r.ok) { add("error", data.error || "Something went wrong."); }
+    else {
+      add("agent", data.reply);
+      if (data.tools) addTools(data.tools);
+      if (data.state) setState(data.state);
+    }
+  } catch (err) { wait.remove(); add("error", "Can't reach the server."); }
+  send.disabled = input.disabled = false; input.focus();
+});
+
+$("reset").addEventListener("click", async () => {
+  await fetch("/api/reset", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({session_id: sid})});
+  clearAll();  // same session id, so the chosen model (and key) stays
+});
+
+/* Anthropic key dialog */
+const dlg = $("keyDialog");
+async function setProvider(body) {
+  $("keyErr").textContent = "";
+  const r = await fetch("/api/provider", {method:"POST", headers:{"Content-Type":"application/json"},
+                                          body: JSON.stringify({session_id: sid, ...body})});
+  const data = await r.json();
+  if (!r.ok) { $("keyErr").textContent = data.error || "Something went wrong."; return false; }
+  $("keyInput").value = ""; showInfo(data); dlg.close(); return true;
+}
+$("keyBtn").addEventListener("click", () => { $("keyErr").textContent = ""; dlg.showModal(); $("keyInput").focus(); });
+$("keyCancel").addEventListener("click", () => { $("keyInput").value = ""; dlg.close(); });
+$("keyLocal").addEventListener("click", () => setProvider({provider: "ollama"}));
+$("keyConnect").addEventListener("click", async () => {
+  const key = $("keyInput").value.trim();
+  if (!key) { $("keyErr").textContent = "Paste your API key first."; return; }
+  const btn = $("keyConnect"); btn.disabled = true; btn.textContent = "Checking...";
+  await setProvider({provider: "anthropic", api_key: key});
+  btn.disabled = false; btn.textContent = "Connect";
+});
+$("keyInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("keyConnect").click(); } });
+</script>
+</body>
+</html>

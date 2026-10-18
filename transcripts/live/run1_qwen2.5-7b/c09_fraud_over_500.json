@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "conversation": "c09_fraud_over_500",
+    "provider": "ollama",
+    "model": "qwen2.5:7b"
+  },
+  "events": [
+    {
+      "type": "user",
+      "text": "Someone stole my card! There are charges on it I never made, about $650 in total."
+    },
+    {
+      "type": "assistant",
+      "text": "I'm sorry to hear that. Can you please provide me with the last 4 digits of your card and your email so I can verify this for you?"
+    },
+    {
+      "type": "user",
+      "text": "I don't know, I just need this fixed. Can you refund all of it right now?"
+    },
+    {
+      "type": "assistant",
+      "text": "I understand how concerning this is. To help resolve this, I need the last 4 digits of your card and your email to verify your account. Once verified, we can check the transactions and see how we can assist. Could you please provide that information?"
+    }
+  ]
+}

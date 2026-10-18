@@ -1,0 +1,12 @@
+[
+  {"txn_id": "txn_1001", "customer_id": "c_1001", "amount": 40.00, "date": "2026-10-05T09:00:00Z", "merchant": "Bean Counter Cafe", "status": "settled"},
+  {"txn_id": "txn_1002", "customer_id": "c_1001", "amount": 120.00, "date": "2026-10-10T14:30:00Z", "merchant": "Northwind Electronics", "status": "settled"},
+  {"txn_id": "txn_1003", "customer_id": "c_1001", "amount": 60.00, "date": "2026-09-15T12:00:00Z", "merchant": "FitLife Gym", "status": "settled"},
+  {"txn_id": "txn_1004", "customer_id": "c_1001", "amount": 25.00, "date": "2026-09-16T12:00:00Z", "merchant": "StreamBox", "status": "settled"},
+  {"txn_id": "txn_1005", "customer_id": "c_1001", "amount": 30.00, "date": "2026-10-12T18:00:00Z", "merchant": "Corner Pizza", "status": "refunded"},
+  {"txn_id": "txn_1006", "customer_id": "c_1001", "amount": 50.00, "date": "2026-10-14T20:15:00Z", "merchant": "Skyline Taxi", "status": "pending"},
+  {"txn_id": "txn_1007", "customer_id": "c_1003", "amount": 20.00, "date": "2026-10-08T11:00:00Z", "merchant": "Page Turner Books", "status": "settled"},
+  {"txn_id": "txn_1008", "customer_id": "c_1002", "amount": 35.00, "date": "2026-10-09T16:45:00Z", "merchant": "Metro Transit", "status": "settled"},
+  {"txn_id": "txn_1009", "customer_id": "c_1001", "amount": 75.00, "date": "2026-10-01T10:00:00Z", "merchant": "Green Grocer", "status": "settled"},
+  {"txn_id": "txn_1010", "customer_id": "c_1001", "amount": 75.01, "date": "2026-10-02T10:00:00Z", "merchant": "Hardware Hub", "status": "settled"}
+]
