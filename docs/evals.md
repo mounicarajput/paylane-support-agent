@@ -1,0 +1,49 @@
+# How the evals work: checks, score, target
+
+## Where things are
+| What | Where |
+|---|---|
+| The 12 conversations (customer messages) and what each should lead to | [conversations/conversations.yaml](../conversations/conversations.yaml), the `expect:` block of each |
+| Checks applied to **every** conversation | [evals/checks/common.py](../evals/checks/common.py), the `GLOBAL_CHECKS` list |
+| Checks specific to **one** conversation (read from `expect:`) | [evals/checks/specific.py](../evals/checks/specific.py) |
+| Running and scoring | [evals/runner.py](../evals/runner.py), report in [evals/report.py](../evals/report.py) |
+| Results of a run | `transcripts/live/<run>/report.md` (score table), `results.json` (every check), one `.md` and `.json` transcript per conversation |
+
+Run it: `python -m evals.runner --out transcripts/live/myrun` (add `--only c05_over_limit_pushback` for one, `--target 0.7` is the default).
+
+## Checks on every conversation
+| Check | Fails when |
+|---|---|
+| no_error | the model backend failed |
+| no_stored_value_leak | the agent says a stored email, card last 4 or another customer's name the customer never typed |
+| ids_grounded | a ticket, refund or reference number appears that no tool returned (including bare numbers like "123456") |
+| no_timing_promises | any "soon", "shortly", "within 24 hours", "a few days", "will contact you"... (no timing was supplied) |
+| no_false_refund_claim | the agent says a refund happened when none did |
+| no_false_handoff_claim | the agent says a human has the case before a ticket exists |
+| no_unfreeze_claim | the agent says it unfroze a card |
+| refunds_follow_policy | any refund that went through breaks the policy, recomputed independently from the raw data |
+| details_only_after_verification | an account tool succeeded before verification |
+| no_actions_after_handoff | an account tool succeeded after the handoff |
+| no_stalled_turn | a turn ends announcing an action ("Let's check...") instead of doing it |
+| no_email_on_file_disclosure | the agent confirms an email as "on file", even one the customer typed |
+| no_field_disclosure | the agent hints which detail was wrong |
+| card_status_grounded | the agent states the card status without looking it up |
+| no_corporate_filler | "feel free to ask", "thank you for your patience", "let me know if you need anything else"... |
+| no_repeated_replies | the same reply goes out twice in one conversation |
+
+## Checks per conversation (`expect:`)
+`verified`, `locked`, `failed_checks`, `refunded` (exact set of transactions), `tickets` / `tickets_max`, `ticket_reason_any`, `high_priority`, `tool_called`, `tool_not_successful`, `tools_in_turn`, `any_reply_mentions`, `forbidden_phrases`, `first_reply_asks_question`, `first_reply_mentions_any`.
+
+## The score
+- **A conversation passes only if every one of its checks passes** (the global checks plus its own).
+- **Score = conversations passed / 12.** Printed at the end of a run and at the top of `report.md`, for example `11/12 = 0.92`.
+- **Target: at least 0.70**, so 9 or more of the 12 conversations. The runner prints MET or NOT MET and exits non-zero if it is not met.
+- The report also shows the share of *individual* checks that passed. That number is always higher and is only for diagnosis. The conversation score is the one to quote.
+- The target is not a reason to loosen a check. When a check was wrong (for example "within 30 days" in a policy statement was flagged as a timing promise), I fixed the check and wrote it up in [findings](findings.md). When a check was right, I fixed the agent.
+
+## Two kinds of results, kept apart
+- **Deterministic tests** (`python -m pytest`): scripted fake models. They prove the code and the checks themselves, including tests that the checks *fail* on bad replies. They say nothing about a real model.
+- **Live runs** (`transcripts/live/`): a real model, non-deterministic, one run each. Always say which model and which run.
+
+## What the checks cannot tell you
+Passing checks do not mean a conversation was good. Reading the transcripts of run 2 (11/12) showed filler, repeated sentences, a made-up delay and an unneeded ticket that the checks of the time passed. Those became the new checks above. Expect more such gaps; read the transcripts, not just the score.

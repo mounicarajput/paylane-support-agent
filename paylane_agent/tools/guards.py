@@ -61,6 +61,23 @@ def check_refund(state: SessionState, api, clock, txn_id: str, amount) -> Decisi
     return Decision(True)
 
 
+def classify_refund(txn: dict, clock) -> tuple:
+    """Where a refund for this transaction would go: ('auto'|'human'|'none', reason).
+
+    Same rules as check_refund, as a pure read of the transaction (used to tell the model up
+    front and by the agent's handoff triggers).
+    """
+    if txn["status"] == "refunded":
+        return "none", "already_refunded"
+    if txn["status"] != "settled":
+        return "none", "not_settled"
+    if Decimal(str(txn["amount"])) > MAX_AUTO_REFUND:
+        return "human", "over_limit"
+    if not clock.within_refund_window(txn["date"]):
+        return "human", "too_old"
+    return "auto", ""
+
+
 def is_high_priority(reason: str, reported_loss_usd) -> bool:
     """Fraud with a total reported loss over $500 is high priority."""
     loss = to_decimal(reported_loss_usd) if reported_loss_usd is not None else None

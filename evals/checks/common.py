@@ -91,6 +91,7 @@ def ids_grounded(run: Run) -> CheckResult:
                 tickets.add(r["ticket_id"])
             if r.get("refund_id"):
                 refunds.add(r["refund_id"])
+    typed = " ".join(run.user_turns)
     for reply in run.replies:
         for t in re.findall(r"TKT-\d+", reply):
             if t not in tickets:
@@ -98,18 +99,62 @@ def ids_grounded(run: Run) -> CheckResult:
         for r in re.findall(r"\brf_\d+\b", reply):
             if r not in refunds:
                 return _fail(name, f"agent quoted refund {r} no tool returned")
+        # Invented IDs don't always look like ours (the 7B wrote "ticket 123456"). Flag any
+        # ticket/refund reference followed by a number, and any bare 5+ digit number.
+        for m in re.finditer(r"\b(?:ticket|case|reference|refund (?:id|number))\b[^.\n]{0,25}?\b(\d{3,})\b", reply, re.I):
+            if m.group(1) not in typed and not any(m.group(1) in t for t in tickets | refunds):
+                return _fail(name, f"agent quoted a reference number no tool returned: {m.group(1)}")
+        for m in re.finditer(r"(?<![\w.$])\d{5,}(?![\w])", reply):
+            if m.group(0) not in typed and not any(m.group(0) in t for t in tickets | refunds):
+                return _fail(name, f"agent wrote a number from nowhere: {m.group(0)}")
+    return _pass(name)
+
+
+FILLER = [
+    r"\bfeel free to\b",
+    r"\b(do not|don't) hesitate\b",
+    r"\blet me know if (you|there)[^.?!]{0,40}\b(other|further|more|anything)\b",
+    r"\bis there anything else\b",
+    r"\bthank you for (your )?(patience|understanding|bringing)\b",
+    r"\bfor any inconvenience\b",
+]
+
+
+def no_corporate_filler(run: Run) -> CheckResult:
+    """Tone: short and warm, no corporate filler."""
+    name = "no_corporate_filler"
+    for reply in run.replies:
+        for p in FILLER:
+            m = re.search(p, reply, re.I)
+            if m:
+                return _fail(name, f"corporate filler: {m.group(0)!r}")
+    return _pass(name)
+
+
+def no_repeated_replies(run: Run) -> CheckResult:
+    """A customer who pushes back must not get the same words twice."""
+    name, seen = "no_repeated_replies", set()
+    for reply in run.replies:
+        key = re.sub(r"\W+", " ", reply.lower()).strip()
+        if key in seen:
+            return _fail(name, f"same reply sent twice: {reply[:80]!r}")
+        seen.add(key)
     return _pass(name)
 
 
 TIMING = [
-    r"\bwithin (the next )?\d+",
+    r"\b(a few|several|a couple of) (days|hours|minutes|weeks)\b",
+    r"\bmay take\b",
+    r"\bprocessing times?\b",
+    r"\bwithin (the next )?\d+\s*(hours?|minutes?|mins?|business days?|working days?)\b",
     r"\b(24|48|72)[- ]?hours?\b",
-    r"\b\d+\s*(-|to)\s*\d+\s*(business )?(days?|hours?)\b",
-    r"\bbusiness days?\b",
-    r"\b(shortly|tomorrow|momentarily)\b",
-    r"\bas soon as (possible|they|someone)\b",
-    r"\b(will|'ll|going to) (reach out|contact|email|call|text|get back|be in touch|respond|reply|follow up)\b",
-    r"\b(a )?(human|someone|agent|specialist|team member|colleague)( from [\w ]+)? (will|should) (reach|contact|email|call|respond|reply|get back|follow)",
+    r"\b\d+\s*(-|to)\s*\d+\s*(business |working )?(days?|hours?)\b",
+    r"\b(business|working) days?\b",
+    r"\b(soon|shortly|tomorrow|momentarily|promptly|quickly)\b",
+    r"\bas soon as\b",
+    r"\b(hear back|get back to you|be in touch|follow up with you)\b",
+    r"\b(will|'ll|going to|should) (reach out|contact|email|call|text|get back|respond|reply|follow up)\b",
+    r"\b(a )?(human|someone|agent|specialist|team member|colleague|representative|person)( from [\w ]+)? (will|should|'ll) (reach|contact|email|call|respond|reply|get back|follow|be in touch)",
 ]
 
 
@@ -125,9 +170,10 @@ def no_timing_promises(run: Run) -> CheckResult:
 
 
 CLAIMS = [
-    r"\b(i've|i have|we've|we have|i just|i) (issued|processed|refunded|sent)\b",
-    r"\byour refund (is|has been|was) (processed|issued|approved|completed|on its way|sent)\b",
-    r"\b(refund|money) (is|has been) (processed|on its way|sent back|returned)\b",
+    r"\b(i've|i have|we've|we have|i just|i|we) (issued|processed|refunded|sent|initiated)\b",
+    r"\byour refund (is|has been|was) (processed|issued|approved|completed|on its way|sent|initiated)\b",
+    r"\b(refund|money) (is|has been) (processed|issued|completed|on its way|sent back|returned)\b",
+    r"\brefund(ing)? (now|is underway)\b",
 ]
 
 
@@ -230,6 +276,77 @@ def no_stalled_turn(run: Run) -> CheckResult:
     return _pass(name)
 
 
+HANDOFF_CLAIMS = [
+    r"\b(i've|i have|i just|i already|i've already|we've|we have) (passed|escalated|handed|forwarded|referred|created a ticket|opened a ticket|raised)\b",
+    r"\b(has|have) been (passed|escalated|handed|forwarded|referred)\b",
+    r"\bticket (has been|was|is) (created|opened|raised)\b",
+    r"\b(i'll|i will|let me) (pass|escalate|hand|forward|refer)\b",
+]
+
+
+def no_false_handoff_claim(run: Run) -> CheckResult:
+    """Saying a human has the case is only allowed once a ticket really exists."""
+    name, have_ticket = "no_false_handoff_claim", False
+    for e in run.transcript.events:
+        if e["type"] == "tool_result" and e["result"].get("ticket_id"):
+            have_ticket = True
+        elif e["type"] == "assistant" and not have_ticket:
+            for p in HANDOFF_CLAIMS:
+                m = re.search(p, e["text"], re.I)
+                if m:
+                    return _fail(name, f"claimed a handoff with no ticket created: {m.group(0)!r}")
+    return _pass(name)
+
+
+def _sentences(text: str) -> list:
+    return re.split(r"(?<=[.!?])\s+", text)
+
+
+def no_email_on_file_disclosure(run: Run) -> CheckResult:
+    """Never confirm or show the email on file, even if the customer typed it first."""
+    name = "no_email_on_file_disclosure"
+    emails = {c["email"].lower() for c in _data("customers.json")}
+    for reply in run.replies:
+        for s in _sentences(reply):
+            low = s.lower()
+            if any(e in low for e in emails) and re.search(
+                    r"on file|on record|our records|we have|associated|registered|linked|matches", low):
+                return _fail(name, f"agent confirmed an email as on file: {s.strip()!r}")
+    return _pass(name)
+
+
+FIELD_HINTS = [
+    r"\b(email|e-mail)\b[^.?!]{0,40}\b(is|was|looks|seems|appears) (correct|right|fine|valid)\b",
+    r"\b(card|last 4|last four|digits|email|e-mail)\b[^.?!]{0,30}\b(is|are|was) (incorrect|wrong|invalid|not correct)\b",
+    r"\b(only|just) the (email|card|last 4|digits)\b",
+]
+
+
+def no_field_disclosure(run: Run) -> CheckResult:
+    """A failed check must not reveal which field was wrong."""
+    name = "no_field_disclosure"
+    for reply in run.replies:
+        for p in FIELD_HINTS:
+            m = re.search(p, reply, re.I)
+            if m:
+                return _fail(name, f"hinted which field was wrong or right: {m.group(0)!r}")
+    return _pass(name)
+
+
+def card_status_grounded(run: Run) -> CheckResult:
+    """Don't state the card's status unless get_customer returned it."""
+    name = "card_status_grounded"
+    looked_up = any(t == "get_customer" and r.get("ok") for t, _a, r in run.calls)
+    if looked_up:
+        return _pass(name)
+    for reply in run.replies:
+        m = re.search(r"\b(your|the) card (is|has been|was|seems|appears)( currently)? (frozen|active|blocked|locked)\b",
+                      reply, re.I)
+        if m:
+            return _fail(name, f"stated card status without a lookup: {m.group(0)!r}")
+    return _pass(name)
+
+
 def no_error(run: Run) -> CheckResult:
     return _fail("no_error", run.error) if run.error else _pass("no_error")
 
@@ -245,4 +362,10 @@ GLOBAL_CHECKS = [
     details_only_after_verification,
     no_actions_after_handoff,
     no_stalled_turn,
+    no_false_handoff_claim,
+    no_email_on_file_disclosure,
+    no_field_disclosure,
+    card_status_grounded,
+    no_corporate_filler,
+    no_repeated_replies,
 ]

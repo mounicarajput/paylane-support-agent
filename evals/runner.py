@@ -21,7 +21,7 @@ from paylane_agent.transcript import Transcript
 
 from .checks.common import GLOBAL_CHECKS, Run
 from .checks.specific import evaluate_expectations
-from .report import build_report
+from .report import TARGET, build_report, score
 
 CONVERSATIONS = ROOT / "conversations" / "conversations.yaml"
 
@@ -58,6 +58,7 @@ def main(argv=None) -> int:
     ap.add_argument("--only", nargs="*", help="conversation ids to run")
     ap.add_argument("--provider", choices=["ollama", "anthropic"])
     ap.add_argument("--out", help="output directory (default transcripts/live/<provider>-<model>)")
+    ap.add_argument("--target", type=float, default=TARGET, help="share of conversations that must pass (default 0.70)")
     args = ap.parse_args(argv)
 
     config = Config.from_env()
@@ -88,10 +89,11 @@ def main(argv=None) -> int:
             "model": provider.model, "temperature": config.temperature,
             "date": Transcript.stamp()}
     (out / "results.json").write_text(json.dumps({"meta": meta, "results": results}, indent=2), encoding="utf-8")
-    (out / "report.md").write_text(build_report(results, meta), encoding="utf-8")
-    passed = sum(r["passed"] for r in results)
-    print(f"\nScore: {passed}/{len(results)}  ->  {out}")
-    return 0 if passed == len(results) else 1
+    (out / "report.md").write_text(build_report(results, meta, args.target), encoding="utf-8")
+    passed, s = sum(r["passed"] for r in results), score(results)
+    print(f"\nScore: {passed}/{len(results)} = {s:.2f}  (target {args.target:.2f}: "
+          f"{'MET' if s >= args.target else 'NOT MET'})  ->  {out}")
+    return 0 if s >= args.target else 1
 
 
 if __name__ == "__main__":

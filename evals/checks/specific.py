@@ -37,9 +37,19 @@ def evaluate_expectations(run: Run, expect: dict) -> list:
             bad = [t for t, _a, r in run.calls if t in want and r.get("ok")]
             out.append(_res("tool_not_successful", not bad, f"succeeded but should not have: {bad}"))
         elif key == "any_reply_mentions":
+            # a flat list = mention at least one word; a list of lists = every group needs a hit
             text = " ".join(run.replies).lower()
-            out.append(_res("any_reply_mentions", any(w.lower() in text for w in want),
-                            f"no reply mentioned any of {want}"))
+            groups = want if want and isinstance(want[0], list) else [want]
+            missed = [g for g in groups if not any(w.lower() in text for w in g)]
+            out.append(_res("any_reply_mentions", not missed, f"no reply mentioned any of {missed}"))
+        elif key == "first_reply_mentions_any":  # a real clarifying question is about the problem itself
+            first = (run.replies[0] if run.replies else "").lower()
+            out.append(_res("first_reply_mentions_any", any(w.lower() in first for w in want),
+                            f"first reply mentioned none of {want}"))
+        elif key == "tool_called":
+            called = {t for t, _a, r in run.calls if r.get("ok")}
+            miss = [t for t in want if t not in called]
+            out.append(_res("tool_called", not miss, f"tools never succeeded: {miss}"))
         elif key == "forbidden_phrases":
             hit = next((m.group(0) for p in want for r in run.replies
                         if (m := re.search(p, r, re.I))), None)

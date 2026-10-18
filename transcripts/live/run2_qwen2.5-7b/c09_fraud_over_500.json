@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "conversation": "c09_fraud_over_500",
+    "provider": "ollama",
+    "model": "qwen2.5:7b"
+  },
+  "events": [
+    {
+      "type": "user",
+      "text": "Someone stole my card! There are charges on it I never made, about $650 in total."
+    },
+    {
+      "type": "tool_call",
+      "name": "escalate_to_human",
+      "arguments": {
+        "summary": "Customer said: Someone stole my card! There are charges on it I never made, about $650 in total.",
+        "reason": "suspected_fraud",
+        "reported_loss_usd": 650.0
+      },
+      "auto": true
+    },
+    {
+      "type": "tool_result",
+      "name": "escalate_to_human",
+      "result": {
+        "ok": true,
+        "ticket_id": "TKT-0001",
+        "priority": "high"
+      }
+    },
+    {
+      "type": "assistant",
+      "text": "I'm sorry, that sounds stressful. Suspected fraud needs a human, so I've passed this on. Your ticket number is TKT-0001."
+    },
+    {
+      "type": "user",
+      "text": "I don't know, I just need this fixed. Can you refund all of it right now?"
+    },
+    {
+      "type": "assistant",
+      "text": "I understand your urgency, but I need to follow the rules to ensure everything is handled correctly. Let's check the transactions first. Could you please provide the last 4 digits of the card and the email associated with this account?"
+    }
+  ]
+}

@@ -26,7 +26,8 @@ class Transcript:
             elif t == "assistant":
                 lines.append(f"**Agent:** {e['text']}")
             elif t == "tool_call":
-                lines.append(f"> tool call: `{e['name']}({json.dumps(e['arguments'], ensure_ascii=False)})`")
+                who = "tool call (made by the agent's policy layer)" if e.get("auto") else "tool call"
+                lines.append(f"> {who}: `{e['name']}({json.dumps(e['arguments'], ensure_ascii=False)})`")
             elif t == "tool_result":
                 lines.append(f"> result: `{json.dumps(e['result'], ensure_ascii=False)}`")
             elif t == "note":

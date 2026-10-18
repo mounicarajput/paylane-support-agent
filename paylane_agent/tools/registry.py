@@ -79,7 +79,14 @@ class ToolRegistry:
         txn = self.api.get_transaction(self.state.customer_id, str(args["txn_id"]))
         if txn.get("ok") is False:
             return {"ok": False, "reason": "not_found"}
-        return {"ok": True, "txn_id": args["txn_id"], **txn}
+        path, why = guards.classify_refund(txn, self.clock)
+        note = {
+            "auto": "Eligible for an automatic full refund if the customer asks for one.",
+            "human": f"Not eligible for an automatic refund ({why}). A human must review it. Do not call issue_refund.",
+            "none": f"Cannot be refunded ({why}). Do not call issue_refund.",
+        }[path]
+        return {"ok": True, "txn_id": args["txn_id"], **txn,
+                "refund_path": path, "refund_reason": why, "refund_note": note}
 
     def _issue_refund(self, args: dict) -> dict:
         txn_id, amount = str(args["txn_id"]), args["amount"]

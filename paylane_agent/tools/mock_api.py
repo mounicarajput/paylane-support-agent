@@ -69,6 +69,11 @@ class MockAPI:
         self.tickets.append({"ticket_id": ticket_id, "customer_id": customer_id, "summary": summary})
         return {"ticket_id": ticket_id}
 
+    def stored_identifiers(self) -> dict:
+        """Emails and card last 4s on file. Internal: lets the reply checker block leaks."""
+        return {"emails": [c["email"].lower() for c in self._customers],
+                "last4": [c["card_last4"] for c in self._customers]}
+
     def raw_transaction(self, txn_id: str) -> Optional[dict]:
         """Internal lookup for guards (includes owner). Not exposed to the model."""
         for t in self._txns:

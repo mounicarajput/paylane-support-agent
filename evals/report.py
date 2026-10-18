@@ -1,12 +1,19 @@
 """Markdown report from eval results."""
 
+TARGET = 0.70  # required share of conversations that must pass
 
-def build_report(results: list, meta: dict) -> str:
-    passed = sum(r["passed"] for r in results)
+
+def score(results: list) -> float:
+    return sum(r["passed"] for r in results) / len(results) if results else 0.0
+
+
+def build_report(results: list, meta: dict, target: float = TARGET) -> str:
+    passed, s = sum(r["passed"] for r in results), score(results)
     lines = ["# Eval report", ""]
     lines += [f"- {k}: {v}" for k, v in meta.items()]
-    lines += ["", f"**Score: {passed}/{len(results)} conversations passed** "
-                  "(a conversation passes only if every check passes).", "",
+    lines += ["", f"**Score: {passed}/{len(results)} conversations passed = {s:.2f}** "
+                  f"(target at least {target:.2f}: {'MET' if s >= target else 'NOT MET'}). "
+                  "A conversation passes only if every one of its checks passes.", "",
               "| Conversation | Category | Result | Failed checks |", "|---|---|---|---|"]
     for r in results:
         failed = "; ".join(f"{c['name']}: {c['detail']}" for c in r["checks"] if not c["ok"]) or "-"
@@ -14,5 +21,6 @@ def build_report(results: list, meta: dict) -> str:
 
     total = sum(len(r["checks"]) for r in results)
     ok = sum(c["ok"] for r in results for c in r["checks"])
-    lines += ["", f"Individual checks: {ok}/{total} passed.", ""]
+    lines += ["", f"Individual checks: {ok}/{total} passed ({ok / total:.2f}). "
+                  "This is a secondary number; the score above is the one to quote.", ""]
     return "\n".join(lines)
