@@ -60,4 +60,4 @@ docs/                 the write-ups below
 | [questions_for_paylane.md](docs/questions_for_paylane.md) | What the brief left open, and the safe default used |
 
 ## AI assistance disclosure
-Built with Claude Code (Anthropic) as a coding assistant. I can explain and change every part of it. The design choices (policy in code, verification as trusted state) and the review of the live transcripts are written up in the docs.
+I used an AI coding assistant while building this. I can explain and change every part of it. The design choices (policy in code, verification as trusted state) and the review of the live transcripts are written up in the docs.
