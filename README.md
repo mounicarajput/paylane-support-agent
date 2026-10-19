@@ -107,6 +107,5 @@ docs/                 write-ups (below)
 
 ## AI assistance
 
-I used [name the tool, e.g. Claude] to help write code and tests. I made the design decisions (policy in code, verification as trusted state), wrote the 12 conversations and the customer note, and read every live transcript. I can walk through or change any part of it.
+I used claude to help write code and tests. I made the design decisions (policy in code, verification as trusted state, Model tuning ), wrote the 12 conversations.
 
-Time spent: about [X] hours.
