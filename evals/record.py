@@ -1,7 +1,7 @@
 """Record a conversation you type yourself, then check it and save the transcript.
 
     python -m paylane_agent record                      # list the 12 scenarios
-    python -m paylane_agent record c01_simple_refund    # type the conversation, say "done" at the end
+    python -m paylane_agent record simple_refund    # type the conversation, say "done" at the end
 
 You play the customer in your own words (the scenario brief says who you are and what you want).
 The agent answers for real. When you finish, the conversation is saved with every tool call, the
@@ -19,7 +19,7 @@ from paylane_agent.transcript import Transcript
 
 from .checks.common import Run
 from .report import build_report
-from .runner import evaluate, load_conversations
+from .runner import evaluate, load_conversations, numbered_name
 
 OUT_DIR = ROOT / "transcripts" / "recorded"
 DONE = {"done", "/done", "finish", "/finish"}
@@ -56,7 +56,7 @@ TOOL_REFUSALS = {
 def list_scenarios(show=print) -> None:
     show("The 12 scenarios. Pick one:\n")
     for c in load_conversations():
-        done = "x" if (OUT_DIR / f"{c['id']}.md").exists() else " "
+        done = "x" if (OUT_DIR / f"{numbered_name(c['id'])}.md").exists() else " "
         show(f"  [{done}] {c['id']:<34} {c['title']}")
     show("\nRecord one with:  python -m paylane_agent record <scenario id>")
 
@@ -176,7 +176,8 @@ def record(conv_id: str, provider: Provider, out_dir: Path = OUT_DIR, read=input
     run = Run(conv["id"], typed[: len(replies)] or typed, replies, agent.registry, transcript, error)
     result = evaluate(run, conv)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / f"{conv['id']}.md").write_text(render(conv, transcript, result), encoding="utf-8")
+    saved = out_dir / f"{numbered_name(conv['id'])}.md"
+    saved.write_text(render(conv, transcript, result), encoding="utf-8")
     _update_report(out_dir, conv, result, {"provider": provider.name, "model": provider.model})
     show(f"\nResult: {'PASS' if result['passed'] else 'FAIL'}")
     for c in result["checks"]:
@@ -184,5 +185,5 @@ def record(conv_id: str, provider: Provider, out_dir: Path = OUT_DIR, read=input
             show(f"  x {c['name']}: {c['detail']}")
     for failure, handling, _ in caught_failures(transcript.events):
         show(f"  caught: {failure}. {handling}")
-    show(f"Saved to {out_dir / (conv['id'] + '.md')}")
+    show(f"Saved to {saved}")
     return result

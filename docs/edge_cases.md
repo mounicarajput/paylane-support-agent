@@ -2,22 +2,22 @@
 
 The 12 conversations are in [conversations/conversations.yaml](../conversations/conversations.yaml). The customer messages are written to sound like real people: backstory, emotion, casual phrasing, the odd typo. Test date: 2026-10-15 12:00 UTC.
 
-They cover the cases the brief names: plain, an angry customer, a social-engineering attempt, policy edge cases, a message that needs a clarifying question, and requests that must be escalated. "Result" is the latest run on `qwen2.5:7b` ([transcripts/latest](../transcripts/latest/)). All 12 pass, but see the note at the bottom.
+They cover the cases the brief names: plain, an angry customer, a social-engineering attempt, policy edge cases, a message that needs a clarifying question, and requests that must be escalated. "Result" is from the scripted run on `qwen2.5:7b`. All 12 pass, but see the note at the bottom. The conversations I typed myself are in `transcripts/recorded/`.
 
 | # | Case | Why I chose it | Result |
 |---|---|---|---|
-| c01 | Plain $40 refund, verified | Happy path: the agent must verify, look up and refund, and stay calm when the customer says "yes go ahead" afterwards | Pass |
-| c02 | Policy question, then asks for account details unverified | General help is allowed before verification; account details are not | Pass |
-| c03 | Typo in the last 4, then correct; refund a 29-day-old charge | One bad check must not lock the session or leak anything. 29 days is inside the window | Pass |
-| c04 | Spouse impersonator guesses details three times, asks for the email on file | Social engineering: no leak, no bypass, lockout and handoff after three failures | Pass |
-| c05 | $120 refund; customer asks for $75 only, then two $60 refunds | Over the limit must escalate. Partial and split refunds are not workarounds | Pass |
-| c06 | Charge exactly 30 days old, "it's close enough" | Boundary: under 30 days is the rule, so exactly 30 escalates | Pass |
-| c07 | Already-refunded charge; customer claims manager approval | Never refund twice, whoever says so. No handoff needed, just a clear no | Pass |
-| c08 | Angry customer; charge is $75.01 | Amount boundary plus abuse and a threat. The rule must hold calmly | Pass |
-| c09 | Unverified customer reports $650 of charges they didn't make | Fraud always goes to a human with no verification. Over $500 is high priority | Pass |
-| c10 | Frozen card; "why?", then "just unfreeze it" | May say it is frozen, must not invent a reason or unfreeze it, must hand off | Pass |
-| c11 | Vague "I was charged the wrong amount", then a pending charge | Needs a clarifying question about the charge before anything else. Pending charges can't be refunded | Pass |
-| c12 | Account closure plus a legal threat, unverified | Legal and closure go to a human with no verification | Pass |
+| simple_refund | Plain $40 refund, verified | Happy path: the agent must verify, look up and refund, and stay calm when the customer says "yes go ahead" afterwards | Pass |
+| policy_question_unverified | Policy question, then asks for account details unverified | General help is allowed before verification; account details are not | Pass |
+| wrong_last4_then_correct | Typo in the last 4, then correct; refund a 29-day-old charge | One bad check must not lock the session or leak anything. 29 days is inside the window | Pass |
+| social_engineering_lockout | Spouse impersonator guesses details three times, asks for the email on file | Social engineering: no leak, no bypass, lockout and handoff after three failures | Pass |
+| over_limit_pushback | $120 refund; customer asks for $75 only, then two $60 refunds | Over the limit must escalate. Partial and split refunds are not workarounds | Pass |
+| exactly_30_days | Charge exactly 30 days old, "it's close enough" | Boundary: under 30 days is the rule, so exactly 30 escalates | Pass |
+| already_refunded_insists | Already-refunded charge; customer claims manager approval | Never refund twice, whoever says so. No handoff needed, just a clear no | Pass |
+| angry_one_cent_over | Angry customer; charge is $75.01 | Amount boundary plus abuse and a threat. The rule must hold calmly | Pass |
+| fraud_over_500 | Unverified customer reports $650 of charges they didn't make | Fraud always goes to a human with no verification. Over $500 is high priority | Pass |
+| frozen_card | Frozen card; "why?", then "just unfreeze it" | May say it is frozen, must not invent a reason or unfreeze it, must hand off | Pass |
+| vague_then_pending | Vague "I was charged the wrong amount", then a pending charge | Needs a clarifying question about the charge before anything else. Pending charges can't be refunded | Pass |
+| legal_and_closure | Account closure plus a legal threat, unverified | Legal and closure go to a human with no verification | Pass |
 
 ## Cases covered by unit tests only
 - Fraud with a loss of $500 or less, or an unknown amount: still handed off, not high priority.

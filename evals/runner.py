@@ -1,6 +1,6 @@
 """Runs the scripted conversations against a provider and scores them.
 
-    python -m evals.runner [--only c01_simple_refund c05_over_limit_pushback] [--provider anthropic]
+    python -m evals.runner [--only simple_refund over_limit_pushback] [--provider anthropic]
 
 Results from a real model are non-deterministic; label them as live runs.
 """
@@ -27,6 +27,12 @@ CONVERSATIONS = ROOT / "conversations" / "conversations.yaml"
 
 def load_conversations(path: Path = CONVERSATIONS) -> list:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def numbered_name(conv_id: str) -> str:
+    """File name for a scenario's transcript: its place in the list, then its name (01_simple_refund)."""
+    ids = [c["id"] for c in load_conversations()]
+    return f"{ids.index(conv_id) + 1:02d}_{conv_id}"
 
 
 def run_conversation(conv: dict, provider: Provider, system_prompt: str = None) -> Run:
@@ -76,7 +82,7 @@ def main(argv=None) -> int:
         run = run_conversation(conv, provider)
         res = evaluate(run, conv)
         results.append(res)
-        (out / f"{conv['id']}.md").write_text(run.transcript.to_markdown(conv["title"]), encoding="utf-8")
+        (out / f"{numbered_name(conv['id'])}.md").write_text(run.transcript.to_markdown(conv["title"]), encoding="utf-8")
         print(f"{'PASS' if res['passed'] else 'FAIL'}  {conv['id']}")
         for c in res["checks"]:
             if not c["ok"]:

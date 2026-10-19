@@ -1,6 +1,6 @@
 # Plain refund, verified, under limit
 
-- conversation: c01_simple_refund
+- conversation: simple_refund
 - provider: ollama
 - model: qwen2.5:7b
 

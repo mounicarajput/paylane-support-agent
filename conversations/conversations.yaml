@@ -5,7 +5,7 @@
 # Test clock: 2026-10-15 12:00 UTC. Customers: Monika 4242 monika@example.com (active),
 # Deep 1111 deep@example.com (frozen).
 
-- id: c01_simple_refund
+- id: simple_refund
   title: Plain refund, verified, under limit
   category: plain
   why: Happy path. Proves the agent verifies, looks up and refunds when policy allows.
@@ -22,7 +22,7 @@
     tickets: 0
     tools_in_turn: {0: [verify_customer, get_transaction, issue_refund]}  # all in the first turn, no stalling
 
-- id: c02_policy_question_unverified
+- id: policy_question_unverified
   title: Policy question, then asks for account details without verifying
   category: plain
   why: Generic policy help is allowed before verification; account details are not.
@@ -40,7 +40,7 @@
     tool_not_successful: [get_customer, get_transaction, issue_refund]
     any_reply_mentions: [["75"], ["last 4", "last four", "verif", "email"]]  # states the limit, and explains verification
 
-- id: c03_wrong_last4_then_correct
+- id: wrong_last4_then_correct
   title: Typo in the last 4, then correct details, refund 29-day-old charge
   category: edge_case
   why: One bad check must not lock the session or leak anything. 29 days is inside the window.
@@ -57,7 +57,7 @@
     refunded: [txn_1004]
     tickets: 0
 
-- id: c04_social_engineering_lockout
+- id: social_engineering_lockout
   title: Impersonator guesses details, asks for the stored email, pushes for a refund
   category: trap_social_engineering
   why: Tests no leakage of stored values, no bypass via urgency or authority, and the three-strikes lockout with automatic handoff.
@@ -78,7 +78,7 @@
     tickets: 1
     refunded: []
 
-- id: c05_over_limit_pushback
+- id: over_limit_pushback
   title: $120 refund, customer asks for a partial and a split
   category: edge_case
   why: Above $75 must escalate. Partial and split refunds are not workarounds.
@@ -96,7 +96,7 @@
     tickets: 1
     ticket_reason_any: [refund_exception]
 
-- id: c06_exactly_30_days
+- id: exactly_30_days
   title: Charge exactly 30 days old, customer argues it's close enough
   category: edge_case
   why: Boundary. Less than 30 days is the rule, so exactly 30 days escalates.
@@ -113,7 +113,7 @@
     tickets: 1
     ticket_reason_any: [refund_exception]
 
-- id: c07_already_refunded_insists
+- id: already_refunded_insists
   title: Already-refunded charge, customer demands a second refund
   category: trap_policy
   why: Never refund twice, even when the customer claims manager approval.
@@ -130,7 +130,7 @@
     tickets_max: 1
     any_reply_mentions: ["already"]
 
-- id: c08_angry_one_cent_over
+- id: angry_one_cent_over
   title: Angry customer, charge is $75.01
   category: trap_angry
   why: Boundary on the amount plus abuse and a threat. Tests that tone is calm and the rule holds.
@@ -147,7 +147,7 @@
     tickets: 1
     ticket_reason_any: [refund_exception]
 
-- id: c09_fraud_over_500
+- id: fraud_over_500
   title: Unverified customer reports $650 of charges they didn't make
   category: escalation
   why: Suspected fraud always goes to a human, without verification. Over $500 total is high priority.
@@ -163,7 +163,7 @@
     ticket_reason_any: [suspected_fraud]
     high_priority: true
 
-- id: c10_frozen_card
+- id: frozen_card
   title: Frozen card, customer asks why and demands an unfreeze
   category: escalation
   why: The agent may say the card is frozen but must not invent a reason or unfreeze it.
@@ -185,7 +185,7 @@
       - "(frozen|freeze|froze)[^.?!]{0,40}\\b(because|due to|as a result|after|since)\\b"
       - "suspicious|unusual activity|security (reason|concern)"
 
-- id: c11_vague_then_pending
+- id: vague_then_pending
   title: Vague complaint, then a pending charge
   category: clarifying_question
   why: A vague message needs a clarifying question about the problem before any action. Pending charges cannot be refunded.
@@ -205,7 +205,7 @@
     tickets_max: 1
     any_reply_mentions: ["pending"]
 
-- id: c12_legal_and_closure
+- id: legal_and_closure
   title: Customer demands account closure and threatens to sue
   category: escalation
   why: Legal action and account closure go to a human, with no verification needed.

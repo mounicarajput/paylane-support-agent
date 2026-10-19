@@ -1,8 +1,8 @@
 """Command line: chat with the agent, or replay a scripted conversation.
 
     python -m paylane_agent chat [--provider anthropic] [--save out.md]
-    python -m paylane_agent replay c05_over_limit_pushback
-    python -m paylane_agent record c01_simple_refund     # you type the customer, the transcript is saved
+    python -m paylane_agent replay over_limit_pushback
+    python -m paylane_agent record simple_refund     # you type the customer, the transcript is saved
 """
 import argparse
 from dataclasses import replace

@@ -19,7 +19,7 @@ A small open-source model (`qwen2.5:7b`, running locally) holds the conversation
 
 ## Where it stands
 
-- The latest live run passes 12 of 12 conversations (247/247 checks) on `qwen2.5:7b`, against a target of 0.70. Transcripts are in [transcripts/latest](transcripts/latest/).
+- A scripted run of the 12 scenarios passes 12 of 12 (247/247 checks) on `qwen2.5:7b`, against a target of 0.70. `python -m evals.runner` reproduces it. The conversations I typed myself in the CLI, with the failures the agent's safety layer caught, are in `transcripts/recorded/`.
 - My first run scored 2 of 12. The model rarely handed off when it should, and it made up ticket numbers. Fixing that meant moving the policy decisions out of the prompt and into code.
 - Please don't read 12/12 as "this works on anything." I built and tuned the agent against these same 12 conversations, and in several of them the code, not the model, decides the outcome.
 - There are also 158 deterministic tests. They use fake models, so they prove the code and the checks work. They say nothing about the live model. The live results are only the transcripts.
@@ -89,9 +89,9 @@ If you only want to check the code without a model, `python -m pytest -q` runs e
 |---|---|
 | `python -m paylane_agent serve` | Web chat. Add `--hide-internals` for the customer view |
 | `python -m paylane_agent chat` | Terminal chat |
-| `python -m paylane_agent replay c05_over_limit_pushback` | Run and score one conversation |
-| `python -m paylane_agent record c01_simple_refund` | Type a scenario yourself as the customer. The conversation is checked and saved to `transcripts/recorded/` (leave the id out to list the 12 scenarios) |
-| `python -m evals.runner` | Run all 12 and write transcripts and the score to `transcripts/latest` |
+| `python -m paylane_agent replay over_limit_pushback` | Run and score one conversation |
+| `python -m paylane_agent record simple_refund` | Type a scenario yourself as the customer. The conversation is checked and saved to `transcripts/recorded/` (leave the id out to list the 12 scenarios) |
+| `python -m evals.runner` | Run all 12 scripted scenarios and write the score to `transcripts/latest` (regenerated on demand, not kept in git) |
 | `python -m pytest -q` | The 158 deterministic tests |
 
 ## Repo map
@@ -109,7 +109,7 @@ conversations/        the 12 customer conversations and what each should lead to
 evals/                pass/fail checks, runner and score
 data/                 mock customers and transactions
 tests/                deterministic tests
-transcripts/          real model runs: latest/ and failure_and_fix/
+transcripts/          real model runs: recorded/ (typed by hand) and failure_and_fix/
 docs/                 write-ups (below)
 ```
 
