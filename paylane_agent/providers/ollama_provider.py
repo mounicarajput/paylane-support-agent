@@ -13,6 +13,8 @@ class OllamaProvider(Provider):
                  max_tokens: int = 1024, timeout: int = 300):
         self.model, self.host, self.timeout = model, host.rstrip("/"), timeout
         self.options = {"temperature": temperature, "seed": seed, "num_predict": max_tokens, "num_ctx": 8192}
+        # Ollama runs on this machine. Never send its traffic through a (corporate) proxy.
+        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def chat(self, system: str, messages: list, tools: list) -> LLMResponse:
         body = {
@@ -25,13 +27,15 @@ class OllamaProvider(Provider):
         req = urllib.request.Request(
             f"{self.host}/api/chat", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with self._opener.open(req, timeout=self.timeout) as resp:
                 data = json.load(resp)
         except urllib.error.HTTPError as e:
             raise ProviderError(f"Ollama error {e.code}: {e.read().decode(errors='replace')[:300]}") from e
-        except (urllib.error.URLError, TimeoutError) as e:
+        except (urllib.error.URLError, OSError) as e:  # refused, timed out, reset, unreachable
+            reason = getattr(e, "reason", None) or e
             raise ProviderError(
-                f"Cannot reach Ollama at {self.host}. Is it running, and did you `ollama pull {self.model}`?") from e
+                f"Cannot reach Ollama at {self.host} ({type(reason).__name__}: {reason}). "
+                f"Is it running, and did you `ollama pull {self.model}`?") from e
 
         msg = data.get("message", {})
         calls = []

@@ -92,3 +92,32 @@ def test_listing_shows_all_twelve_scenarios():
     shown = []
     list_scenarios(shown.append)
     assert sum(1 for line in shown if line.strip().startswith("[")) == 12
+
+
+def test_if_the_model_cannot_be_reached_nothing_is_saved_and_the_user_is_told(tmp_path):
+    from paylane_agent.providers.base import ProviderError
+
+    class Down(Provider):
+        name, model = "ollama", "qwen2.5:7b"
+
+        def chat(self, system, messages, tools):
+            raise ProviderError("Cannot reach Ollama at http://127.0.0.1:11434 (ConnectionRefusedError: refused).")
+
+    result, shown = run(tmp_path, "simple_refund", Down(), "Hi, I was charged $40 and want it back", "done")
+    assert result == {} and not list(tmp_path.iterdir())  # no transcript, no report, no results file
+    assert "Cannot reach Ollama" in shown and "nothing was saved" in shown
+
+
+def test_a_person_who_gives_their_details_one_message_at_a_time_is_not_failed_for_it(tmp_path):
+    # The script gives everything in message 1; a real customer often does not. Same outcome, so it must pass.
+    from paylane_agent.providers.base import ToolCall
+
+    model = Model(LLMResponse(tool_calls=[ToolCall("c", "issue_refund", {"txn_id": "txn_1001", "amount": 40})]),
+                  LLMResponse(text="Your refund went through, ID rf_0001."))
+    result, _ = run(tmp_path, "simple_refund", model,
+                    "Hi, I think I was charged the wrong amount for something.",
+                    "It was $40 at Bean Counter Cafe. My card ends in 4242 and my email is monika@example.com, txn_1001.",
+                    "done")
+    failed = [c for c in result["checks"] if not c["ok"]]
+    assert result["passed"] is True, failed
+    assert not any(c["name"] == "tools_in_turn" for c in result["checks"])

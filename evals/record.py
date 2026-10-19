@@ -146,7 +146,7 @@ def record(conv_id: str, provider: Provider, out_dir: Path = OUT_DIR, read=input
     transcript = Transcript({"model": f"{provider.name}: {provider.model}",
                              "recorded": "typed live in the CLI", "date": Transcript.stamp()})
     agent = Agent(provider, ToolRegistry(), transcript=transcript)
-    typed, replies, error = [], [], ""
+    typed, replies = [], []
     while True:
         try:
             text = read("you> ").strip()
@@ -164,17 +164,22 @@ def record(conv_id: str, provider: Provider, out_dir: Path = OUT_DIR, read=input
         try:
             reply = agent.respond(text)
         except ProviderError as e:
-            error = str(e)
-            show(f"[error] {error}")
-            break
+            # The model could not be reached. That says nothing about the agent, so don't save a
+            # transcript (it would show a misleading FAIL). Nothing is written; run the scenario again.
+            show(f"\n[error] {e}")
+            show("The model could not be reached, so nothing was saved. Fix that and record this scenario again.")
+            return {}
         replies.append(reply)
         show(f"agent> {reply}\n")
 
     if not typed:
         show("No conversation typed, nothing saved.")
         return {}
-    run = Run(conv["id"], typed[: len(replies)] or typed, replies, agent.registry, transcript, error)
-    result = evaluate(run, conv)
+    run = Run(conv["id"], typed[: len(replies)] or typed, replies, agent.registry, transcript)
+    # `tools_in_turn` says which turn a tool must be called in. That fits a script where everything is in
+    # the first message, not a person who gives their details one message at a time. Outcomes still count.
+    typed_conv = {**conv, "expect": {k: v for k, v in conv.get("expect", {}).items() if k != "tools_in_turn"}}
+    result = evaluate(run, typed_conv)
     out_dir.mkdir(parents=True, exist_ok=True)
     saved = out_dir / f"{numbered_name(conv['id'])}.md"
     saved.write_text(render(conv, transcript, result), encoding="utf-8")

@@ -21,7 +21,7 @@ def _load_dotenv(path: Path) -> None:
 class Config:
     provider: str = "ollama"  # ollama (primary, open source) | anthropic (optional)
     ollama_model: str = "qwen2.5:7b"
-    ollama_host: str = "http://localhost:11434"
+    ollama_host: str = "http://127.0.0.1:11434"
     anthropic_model: str = "claude-sonnet-5-5"
     anthropic_api_key: str = ""
     temperature: float = 0.0

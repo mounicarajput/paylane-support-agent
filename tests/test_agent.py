@@ -78,3 +78,44 @@ def test_anthropic_message_conversion_groups_tool_results():
     wire = AnthropicProvider._to_wire(msgs)
     assert [m["role"] for m in wire] == ["user", "assistant", "user"]
     assert len(wire[2]["content"]) == 2
+
+
+def test_ollama_provider_ignores_proxy_settings_and_says_why_it_failed(monkeypatch):
+    import json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    import pytest
+    from paylane_agent.providers.base import ProviderError
+    from paylane_agent.providers.ollama_provider import OllamaProvider
+
+    class FakeOllama(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            body = json.dumps({"message": {"role": "assistant", "content": "hello from ollama"}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), FakeOllama)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        # A dead proxy in the environment (as on some corporate laptops) must not matter for a local server.
+        for name in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY"):
+            monkeypatch.setenv(name, "http://127.0.0.1:9")
+        monkeypatch.delenv("NO_PROXY", raising=False)
+        monkeypatch.delenv("no_proxy", raising=False)
+        p = OllamaProvider("qwen2.5:7b", f"http://127.0.0.1:{server.server_port}", timeout=5)
+        assert p.chat("x", [{"role": "user", "content": "hi"}], []).text == "hello from ollama"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    dead = OllamaProvider("qwen2.5:7b", "http://127.0.0.1:9", timeout=2)  # nothing listens on port 9
+    with pytest.raises(ProviderError) as e:
+        dead.chat("x", [{"role": "user", "content": "hi"}], [])
+    assert "Cannot reach Ollama at http://127.0.0.1:9" in str(e.value) and "Error" in str(e.value)
