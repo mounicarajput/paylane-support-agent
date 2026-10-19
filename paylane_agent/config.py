@@ -22,6 +22,8 @@ class Config:
     provider: str = "ollama"  # ollama (primary, open source) | anthropic (optional)
     ollama_model: str = "qwen2.5:7b"
     ollama_host: str = "http://127.0.0.1:11434"
+    ollama_timeout: int = 900  # seconds to wait for one reply; a 7B model on a laptop CPU can be slow
+    ollama_keep_alive: str = "60m"  # keep the model loaded between messages (Ollama's default is 5 minutes)
     anthropic_model: str = "claude-sonnet-5-5"
     anthropic_api_key: str = ""
     temperature: float = 0.0
@@ -36,6 +38,8 @@ class Config:
             provider=env("PROVIDER", "ollama").lower(),
             ollama_model=env("OLLAMA_MODEL", cls.ollama_model),
             ollama_host=env("OLLAMA_HOST", cls.ollama_host),
+            ollama_timeout=int(env("OLLAMA_TIMEOUT", cls.ollama_timeout)),
+            ollama_keep_alive=env("OLLAMA_KEEP_ALIVE", cls.ollama_keep_alive),
             anthropic_model=env("ANTHROPIC_MODEL", cls.anthropic_model),
             anthropic_api_key=env("ANTHROPIC_API_KEY", ""),
             temperature=float(env("TEMPERATURE", cls.temperature)),

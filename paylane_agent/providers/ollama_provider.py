@@ -10,8 +10,8 @@ class OllamaProvider(Provider):
     name = "ollama"
 
     def __init__(self, model: str, host: str, temperature: float = 0.0, seed: int = 7,
-                 max_tokens: int = 1024, timeout: int = 300):
-        self.model, self.host, self.timeout = model, host.rstrip("/"), timeout
+                 max_tokens: int = 1024, timeout: int = 900, keep_alive: str = "60m"):
+        self.model, self.host, self.timeout, self.keep_alive = model, host.rstrip("/"), timeout, keep_alive
         self.options = {"temperature": temperature, "seed": seed, "num_predict": max_tokens, "num_ctx": 8192}
         # Ollama runs on this machine. Never send its traffic through a (corporate) proxy.
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -20,6 +20,7 @@ class OllamaProvider(Provider):
         body = {
             "model": self.model,
             "stream": False,
+            "keep_alive": self.keep_alive,  # without this Ollama unloads the model after ~5 idle minutes
             "options": self.options,
             "messages": [{"role": "system", "content": system}] + [self._to_wire(m) for m in messages],
             "tools": [{"type": "function", "function": t} for t in tools],

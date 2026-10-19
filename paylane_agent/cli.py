@@ -9,6 +9,7 @@ from dataclasses import replace
 
 from .agent import Agent
 from .config import Config
+from .progress import thinking
 from .providers.base import ProviderError
 from .providers.factory import get_provider
 from .tools.registry import ToolRegistry
@@ -39,7 +40,9 @@ def cmd_chat(args) -> int:
             if not text:
                 continue
             try:
-                print(f"agent> {agent.respond(text)}\n")
+                with thinking():
+                    reply = agent.respond(text)
+                print(f"agent> {reply}\n")
             except ProviderError as e:
                 print(f"[error] {e}")
                 break

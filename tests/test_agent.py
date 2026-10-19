@@ -119,3 +119,52 @@ def test_ollama_provider_ignores_proxy_settings_and_says_why_it_failed(monkeypat
     with pytest.raises(ProviderError) as e:
         dead.chat("x", [{"role": "user", "content": "hi"}], [])
     assert "Cannot reach Ollama at http://127.0.0.1:9" in str(e.value) and "Error" in str(e.value)
+
+
+def test_ollama_provider_keeps_the_model_loaded_and_waits_long_enough():
+    import json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from paylane_agent.config import Config
+    from paylane_agent.providers.factory import get_provider
+
+    seen = {}
+
+    class Capture(BaseHTTPRequestHandler):
+        def do_POST(self):
+            seen["body"] = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+            out = json.dumps({"message": {"role": "assistant", "content": "ok"}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(out)))
+            self.end_headers()
+            self.wfile.write(out)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Capture)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        cfg = Config(ollama_host=f"http://127.0.0.1:{server.server_port}")
+        provider = get_provider(cfg)
+        assert provider.timeout >= 900  # was 300, which a cold 7B model on a laptop could exceed
+        provider.chat("x", [{"role": "user", "content": "hi"}], [])
+        assert seen["body"]["keep_alive"] == "60m"  # otherwise Ollama unloads the model after ~5 idle minutes
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_thinking_notice_appears_only_when_the_work_is_slow():
+    import time
+
+    from paylane_agent.progress import thinking
+
+    quick, slow = [], []
+    with thinking(quick.append, after=0.3):
+        pass
+    time.sleep(0.5)
+    with thinking(slow.append, after=0.1, every=10):
+        time.sleep(0.4)
+    assert quick == [] and len(slow) == 1 and "thinking" in slow[0]

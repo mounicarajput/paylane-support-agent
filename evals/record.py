@@ -13,6 +13,7 @@ from pathlib import Path
 
 from paylane_agent.agent import Agent
 from paylane_agent.config import ROOT
+from paylane_agent.progress import thinking
 from paylane_agent.providers.base import Provider, ProviderError
 from paylane_agent.tools.registry import ToolRegistry
 from paylane_agent.transcript import Transcript
@@ -162,7 +163,8 @@ def record(conv_id: str, provider: Provider, out_dir: Path = OUT_DIR, read=input
             continue
         typed.append(text)
         try:
-            reply = agent.respond(text)
+            with thinking(show):
+                reply = agent.respond(text)
         except ProviderError as e:
             # The model could not be reached. That says nothing about the agent, so don't save a
             # transcript (it would show a misleading FAIL). Nothing is written; run the scenario again.
