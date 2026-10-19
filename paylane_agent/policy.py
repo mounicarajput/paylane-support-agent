@@ -40,6 +40,15 @@ CARD_TROUBLE = re.compile(
     r"\b(frozen|freeze|blocked|locked|not working|isn'?t working|won'?t work|declined|"
     r"stopped working|can'?t use my card)\b", I)
 REFUND_INTENT = re.compile(r"\b(refunds?|refunded|money back|reimburse\w*|chargeback|get my money)\b", I)
+# A question about the rules ("how do refunds work?", "what's the refund policy?", "is there a limit?").
+# General policy help needs no verification, even if the same message also says "I need a refund".
+POLICY_QUESTION = re.compile(
+    r"\brefunds?\s+(policy|policies|rules?|limits?|terms|process)\b|\b(policy|policies)\b|"
+    r"\bhow\b[^.?!]{0,25}\brefunds?\b[^.?!]{0,20}\bwork|\bhow (do|does|can|would|could)\b[^.?!]{0,15}\brefunds?\b|"
+    r"\brefunds?\b[^.?!]{0,15}\b(limit|cap|maximum|time ?frame|deadline)\b|"
+    r"\bwhat('s| is| are) (the |your )?(rules?|limits?)\b|\bis there (a |any )?(limit|cap)\b", I)
+NO_SHARING = re.compile(r"\b(don'?t|do not|won'?t|not going to|rather not|no)\b[^.?!]{0,25}\b(share|give|type|send|provide)\b", I)
+
 # "I need my refund", "refund it", "can I get my money back": a request for a refund, not a question about them.
 PERSONAL_REFUND = re.compile(
     r"\b(my|me|i)\b[^.?!]{0,30}\b(refund\w*|money back|reimburse\w*)\b|"
@@ -196,6 +205,21 @@ VERIFY_FAILED = [
 ]
 ACK = "That's all taken care of."  # last resort when a reply was nothing but filler
 OFFER_HANDOFF = "Would you like me to pass this to a human to take a look?"
+# The refund rules, in plain words. This is policy, not account data, so no verification is needed to hear it.
+POLICY_ANSWERS = [
+    "Here's how refunds work. I can refund a settled charge in full if it's $75 or less, under 30 days old, and "
+    "not refunded before. Anything over $75, or 30 days old or more, needs a person to review it. Pending charges "
+    "can't be refunded, and I can't do partial refunds. To look at a specific charge, send me the last 4 digits of "
+    "your card and the email on your account.",
+    "Sure, the short version: full refunds only, for settled charges of $75 or less that are under 30 days old and "
+    "haven't been refunded yet. Bigger or older ones go to a person, and pending charges can't be refunded. "
+    "Whenever you want me to check a charge, I'll need the card's last 4 digits and your account email.",
+]
+POLICY_ANSWER_NO_SHARING = (
+    "No problem, you don't need to share anything for this. Refunds are full only: settled charges of $75 or less, "
+    "under 30 days old, not refunded before. Over $75 or 30 days or older goes to a person, and pending charges "
+    "can't be refunded. I only need your card's last 4 digits and email if you want me to check a specific charge.")
+
 # Verification always comes first: card last 4 and email, before any transaction ID.
 ASK_TO_VERIFY = [
     "I can help with that once I've verified you. Please send the last 4 digits of your card and the email on your account.",

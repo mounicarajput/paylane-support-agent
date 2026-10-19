@@ -498,3 +498,46 @@ def test_the_whole_second_screenshot_conversation_stays_inside_the_rules():
     for reply in out:
         assert policy.check_reply(reply, a.registry) is None, reply
     assert len(set(out)) == len(out) and len(a.registry.api.tickets) == 1 and len(a.registry.api.refunds) == 1
+
+
+# ---- found while recording "policy_question_unverified" by hand --------------------------------------
+def test_the_exact_messages_that_failed_live_now_get_the_refund_rules_without_verification():
+    # Live failure: both were answered with "I can help once I've verified you" because "i need refund" matched.
+    a = agent()
+    r1 = a.respond("hey, how refund works? i need refund, what's the refund policy?")
+    r2 = a.respond("i need refund policy details first? i don't want to share my card details now")
+    for r in (r1, r2):
+        assert "$75" in r and "30 days" in r, r
+        assert "verified you" not in r
+    assert r1 != r2 and "don't need to share" in r2
+    assert a.provider.calls == 0 and not a.registry.calls and a.registry.state.failed_checks == 0
+
+
+def test_policy_answers_are_themselves_safe_to_send():
+    for text in policy.POLICY_ANSWERS + [policy.POLICY_ANSWER_NO_SHARING]:
+        assert policy.check_reply(text, reg()) is None, text
+
+
+def test_policy_questions_are_told_apart_from_requests():
+    for text in ["how do refunds work?", "what's the refund policy?", "Is there a refund limit?",
+                 "how refund works? i need refund, what's the refund policy?", "how can I get a refund?",
+                 "What are your rules on refunds?", "is there a cap?"]:
+        assert policy.POLICY_QUESTION.search(text), text
+    for text in ["give me refund", "i need my refund", "I want my money back for txn_1001", "refund it please",
+                 "I was charged the wrong amount"]:
+        assert not policy.POLICY_QUESTION.search(text), text
+
+
+def test_a_plain_refund_request_still_asks_to_verify_and_a_policy_question_with_details_still_verifies():
+    a = agent(say("Verified, thanks."))
+    assert "last 4" in a.respond("give me refund")
+    assert a.provider.calls == 0
+    b = agent(say("Thanks, you're verified."))
+    b.respond("what's the refund policy? my card ends in 4242 and my email is monika@example.com")
+    assert b.registry.state.verified  # details were given, so the policy template is skipped and we verify
+
+
+def test_scenario_two_expects_the_rules_in_the_first_reply():
+    from evals.runner import load_conversations
+    conv = next(c for c in load_conversations() if c["id"] == "policy_question_unverified")
+    assert conv["expect"]["first_reply_mentions_any"] == ["75"]

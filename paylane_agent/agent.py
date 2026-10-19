@@ -140,6 +140,12 @@ class Agent:
         if state.handed_off:
             return self._after_handoff_reply(text)
 
+        # A question about the rules gets the rules, with no verification, even if it also says "I need a refund".
+        if not policy.extract_credentials(text) and policy.POLICY_QUESTION.search(text):
+            if policy.NO_SHARING.search(text):
+                return policy.POLICY_ANSWER_NO_SHARING
+            return self._pick("policy", policy.POLICY_ANSWERS)
+
         refunds = self.registry.api.refunds
         # "I never received it" after a refund that went through: say what we can and can't see.
         if refunds and policy.NOT_RECEIVED.search(text) and not policy.extract_txn_ids(text):

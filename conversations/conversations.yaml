@@ -38,6 +38,7 @@
     refunded: []
     tickets: 0
     tool_not_successful: [get_customer, get_transaction, issue_refund]
+    first_reply_mentions_any: ["75"]  # the first answer must contain the rules, not a demand to verify
     any_reply_mentions: [["75"], ["last 4", "last four", "verif", "email"]]  # states the limit, and explains verification
 
 - id: wrong_last4_then_correct

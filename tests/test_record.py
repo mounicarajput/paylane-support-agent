@@ -44,7 +44,7 @@ def test_a_typed_over_limit_conversation_is_saved_checked_and_explained(tmp_path
 def test_failures_the_safety_layer_caught_are_written_up_in_plain_words(tmp_path):
     # The model lies about a refund and promises timing. The layer blocks it and the saved file explains why.
     lie = LLMResponse(text="I've refunded it. Ticket 123456, someone will contact you within 24 hours.")
-    run(tmp_path, "policy_question_unverified", Model(lie), "hi, how do refunds work?", "done")
+    run(tmp_path, "policy_question_unverified", Model(lie), "hello, can you help me with something?", "done")
     saved = (tmp_path / "02_policy_question_unverified.md").read_text(encoding="utf-8")
     assert "**Failure:**" in saved and "said a refund happened when none did" in saved
     assert "**Handled:**" in saved and "123456" in saved  # what the model tried to say is kept as evidence

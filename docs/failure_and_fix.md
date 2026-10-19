@@ -1,28 +1,34 @@
-# One failure I found, and how I fixed it
+# Failures found while recording live conversations, and the fixes
 
-## The failure: the agent stops after verifying and never acts
-First live test on `qwen2.5:7b`, conversation simple_refund (plain refund of `txn_1001`). The customer gave a card, email and transaction ID in the first message.
+These come from typing the scenarios by hand in the CLI (`python -m paylane_agent record <scenario>`), not from the scripted run. A person phrases things differently from a script, and that is where the failures show up. Each entry has the real transcript.
 
-Transcript: [1_before](../transcripts/failure_and_fix/1_before.md)
+## 1. A question about the rules was answered with a demand to verify
+
+**Found in:** `policy_question_unverified`. Transcript of the failure: [policy_question_before.md](../transcripts/failure_and_fix/policy_question_before.md) (copied from the terminal, because the session was ended before it saved).
+
+**What happened**
 ```
-tool call: verify_customer(...)  ->  ok
-Agent: Verified. Let's check the transaction details. I'll look up the transaction with ID txn_1001.
-(turn ends; nothing was looked up)
+Customer: hey, how refund works? i need refund, what's the refund policy?
+Agent:    I can help with that once I've verified you. Please send the last 4 digits of your card and the email on your account.
+Customer: i need refund policy details first? i don't want to share my card details now
+Agent:    Thanks. I still need the last 4 digits of your card and the email on your account before I can look at anything.
 ```
-The refund only happened because my scripted second message said "yes, go ahead". With a real customer the chat would have stalled. **My own eval missed it**, since simple_refund still ended in the right refund. I caught it by reading the transcript.
+The customer asked twice for the rules and said plainly they did not want to share details. The agent ignored both and asked for the details again. General policy help should need no verification. Only account details do.
 
-## Fix attempt 1: prompt only (did not work)
-I added a rulebook section "Act, don't announce": do verify, look up and refund in one turn, never announce an action. I also added two checks that fail on the stall (`no_stalled_turn`, and `tools_in_turn` for simple_refund), and confirmed they fail on the saved "before" transcript.
+**Why it happened.** The agent decides some replies itself, before the model sees the message. One of those rules is "an unverified customer asking for a refund must verify first", and it matched the words "i need refund" inside a policy question. Because it runs before the model, the model never got the chance to answer sensibly, and none of the reply checks could see it.
 
-Re-run: [2_prompt_fix_only](../transcripts/failure_and_fix/2_prompt_fix_only.md). The model still wrote "Let's check the transaction now" and stopped. The 7B model does not reliably follow this instruction.
+**Why the scripted run missed it.** My scripted version of this scenario asked "How do refunds work with you guys? Is there a cap?", with no "I need a refund" in it. Real people mix a request and a question in one breath. The scripted run scored 12/12 while this was broken.
 
-## Fix attempt 2: loop-level guard (worked)
-If a reply announces an action ("let's check", "I'll look up", ...) and calls no tool, the agent loop hides that reply from the customer and sends one automated reminder to act, at most twice. Code: `STALLED` and `NUDGE` in [agent.py](../paylane_agent/agent.py); tests in [tests/test_agent.py](../tests/test_agent.py).
+**The fix**
+- The agent now recognises a question about the rules ("how do refunds work", "what's the refund policy", "is there a limit", "what are your rules") and answers it with the real rules: full refunds only, settled charges of $75 or less, under 30 days old, not refunded before; over $75 or 30 days old or more goes to a person; pending charges can't be refunded; no partial refunds. No verification is needed, even if the same message also says "I need a refund".
+- If the customer says they don't want to share details, the answer starts "No problem, you don't need to share anything for this."
+- The answer comes in two wordings so a repeat question doesn't get the same words twice. It says what is needed only if they want a specific charge checked.
+- If the customer has already given their details, this rule steps aside and they are verified as before.
+- A plain "give me refund" or "what was my last order?" still asks them to verify first.
+- The scenario now also checks that the **first** reply contains the rules (`first_reply_mentions_any`), so a demand to verify in its place fails.
 
-Re-run: [3_loop_fix](../transcripts/failure_and_fix/3_loop_fix.md). The stalled reply is suppressed, the model then calls `get_transaction` and `issue_refund`, and simple_refund passes the stricter checks. In the first full run the guard fired 7 times across 6 conversations.
+**Tests.** The exact two messages above are a test. So are: the answers pass the reply checker themselves, policy questions are told apart from requests, and a request or an order lookup still asks to verify.
 
-## Lesson
-A prompt rule is a request; a check in code is a guarantee. This is the same reason refund policy lives in guards and not only in the prompt. The first full run then showed the same pattern at a worse scale (the model never calls the handoff tool), which is why handoffs are now created by code.
+**Lesson.** Rules that run before the model can be wrong in ways the reply checks never see, and a scripted conversation only covers the phrasing its author thought of. Typing the scenarios by hand found it.
 
-## A second failure, found by the user
-In the web UI, a second verification with a wrong card number returned "Already verified" and the session stayed verified. Cause: my verification code skipped the comparison once a session was verified. Fixed so every check compares email and last 4, a failure drops verification, and a verified session cannot switch customers. Unit tests cover it ([test_verification.py](../tests/test_verification.py), [test_guards.py](../tests/test_guards.py)). I did not catch this one myself.
+<!-- Further failures found while recording the remaining scenarios are added below. -->
