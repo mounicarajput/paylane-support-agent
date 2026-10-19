@@ -32,4 +32,4 @@ They cover the cases the brief names: plain, an angry customer, a social-enginee
 Languages other than English, very long conversations, a customer changing their request mid-way, injection text inside a merchant name, and the same customer in two chats at once.
 
 ## Note on the results
-I wrote these 12 and tuned the agent against them, so "all pass" is not evidence about conversations I haven't written. See [findings](findings.md), section 5.
+I wrote these 12 and tuned the agent against them, so "all pass" is not evidence about conversations I haven't written.

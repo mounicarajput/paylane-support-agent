@@ -39,7 +39,7 @@ Run it: `python -m evals.runner` (add `--only c05_over_limit_pushback` for one, 
 - **Score = conversations passed / 12.** Printed at the end of a run and at the top of `report.md`, for example `11/12 = 0.92`.
 - **Target: at least 0.70**, so 9 or more of the 12 conversations. The runner prints MET or NOT MET and exits non-zero if it is not met.
 - The report also shows the share of *individual* checks that passed. That number is always higher and is only for diagnosis. The conversation score is the one to quote.
-- The target is not a reason to loosen a check. When a check was wrong (for example "within 30 days" in a policy statement was flagged as a timing promise), I fixed the check and wrote it up in [findings](findings.md). When a check was right, I fixed the agent.
+- The target is not a reason to loosen a check. When a check was wrong (for example "within 30 days" in a policy statement was flagged as a timing promise), I fixed the check. When a check was right, I fixed the agent.
 
 ## Two kinds of results, kept apart
 - **Deterministic tests** (`python -m pytest`): scripted fake models. They prove the code and the checks themselves, including tests that the checks *fail* on bad replies. They say nothing about a real model.

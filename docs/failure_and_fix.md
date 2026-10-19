@@ -22,7 +22,7 @@ If a reply announces an action ("let's check", "I'll look up", ...) and calls no
 Re-run: [3_loop_fix](../transcripts/failure_and_fix/3_loop_fix.md). The stalled reply is suppressed, the model then calls `get_transaction` and `issue_refund`, and c01 passes the stricter checks. In the first full run the guard fired 7 times across 6 conversations.
 
 ## Lesson
-A prompt rule is a request; a check in code is a guarantee. This is the same reason refund policy lives in guards and not only in the prompt. The first full run then showed the same pattern at a worse scale (the model never calls the handoff tool), which is why handoffs are now created by code. See [findings](findings.md).
+A prompt rule is a request; a check in code is a guarantee. This is the same reason refund policy lives in guards and not only in the prompt. The first full run then showed the same pattern at a worse scale (the model never calls the handoff tool), which is why handoffs are now created by code.
 
 ## A second failure, found by the user
 In the web UI, a second verification with a wrong card number returned "Already verified" and the session stayed verified. Cause: my verification code skipped the comparison once a session was verified. Fixed so every check compares email and last 4, a failure drops verification, and a verified session cannot switch customers. Unit tests cover it ([test_verification.py](../tests/test_verification.py), [test_guards.py](../tests/test_guards.py)). I did not catch this one myself.
