@@ -22,7 +22,7 @@
 
 **Customer:** Why would it be frozen?? I didn't do anything!
 
-_filler removed from: "I understand how frustrating this is. I've passed your issue to a human who can look into it further. Your ticket number is TKT-0001. Please let me know if you have any other questions."_
+_timing or filler removed from: "I understand how frustrating this is. I've passed your issue to a human who can look into it further. Your ticket number is TKT-0001. Please let me know if you have any other questions."_
 
 **Agent:** I understand how frustrating this is. I've passed your issue to a human who can look into it further. Your ticket number is TKT-0001.
 

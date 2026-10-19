@@ -26,8 +26,6 @@
 
 **Customer:** I'm going to leave you the worst review you've ever seen if you don't sort this out right now.
 
-_filler removed from: "I understand your frustration. I've already passed this to a human for review. They will look into it as soon as possible. Your ticket number is TKT-0001. Please let me know if there's anything else I can assist with."_
-
-_reply blocked (timing_promise): "I understand your frustration. I've already passed this to a human for review. They will look into it as soon as possible. Your ticket number is TKT-0001. Please let me know if there's anything else I can assist with."_
+_timing or filler removed from: "I understand your frustration. I've already passed this to a human for review. They will look into it as soon as possible. Your ticket number is TKT-0001. Please let me know if there's anything else I can assist with."_
 
 **Agent:** I understand your frustration. I've already passed this to a human for review. Your ticket number is TKT-0001.

@@ -7,13 +7,18 @@ def score(results: list) -> float:
     return sum(r["passed"] for r in results) / len(results) if results else 0.0
 
 
-def build_report(results: list, meta: dict, target: float = TARGET) -> str:
+def build_report(results: list, meta: dict, target: float = TARGET, total: int = None) -> str:
     passed, s = sum(r["passed"] for r in results), score(results)
     lines = ["# Eval report", ""]
     lines += [f"- {k}: {v}" for k, v in meta.items()]
-    lines += ["", f"**Score: {passed}/{len(results)} conversations passed = {s:.2f}** "
-                  f"(target at least {target:.2f}: {'MET' if s >= target else 'NOT MET'}). "
-                  "A conversation passes only if every one of its checks passes.", "",
+    if total and len(results) < total:  # a partial set: don't present it as the final score
+        score_line = (f"**{passed} of {len(results)} recorded conversations passed** "
+                      f"({len(results)} of {total} recorded so far). The final score, out of {total}, "
+                      f"counts once all {total} are recorded; the target is at least {target:.2f}.")
+    else:
+        score_line = (f"**Score: {passed}/{len(results)} conversations passed = {s:.2f}** "
+                      f"(target at least {target:.2f}: {'MET' if s >= target else 'NOT MET'}).")
+    lines += ["", score_line + " A conversation passes only if every one of its checks passes.", "",
               "| Conversation | Category | Result | Failed checks |", "|---|---|---|---|"]
     for r in results:
         failed = "; ".join(f"{c['name']}: {c['detail']}" for c in r["checks"] if not c["ok"]) or "-"

@@ -16,6 +16,11 @@ class Transcript:
         for k, v in self.meta.items():
             lines.append(f"- {k}: {v}")
         lines.append("")
+        return "\n".join(lines) + "\n" + self.events_markdown()
+
+    def events_markdown(self) -> str:
+        """The conversation itself: messages, tool calls, tool results and the agent's own notes."""
+        lines = []
         for e in self.events:
             t = e["type"]
             if t == "user":

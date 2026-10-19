@@ -18,9 +18,7 @@
 
 > result: `{"ok": true, "refund_id": "rf_0001", "amount": 40}`
 
-_filler removed from: 'The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
-
-_reply blocked (corporate_filler): 'The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
+_timing or filler removed from: 'The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
 
 **Agent:** The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001.
 

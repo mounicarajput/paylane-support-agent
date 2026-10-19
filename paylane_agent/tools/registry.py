@@ -23,6 +23,9 @@ class ToolRegistry:
         self.state = state or SessionState()
         self.clock = clock or Clock()
         self.calls: list = []  # (name, args, result) for transcripts and evals
+        # What the customer has typed so far. The agent fills it in. When it is set, verify_customer
+        # refuses details the customer never gave (models sometimes invent an email and card digits).
+        self.customer_text: Optional[list] = None
         self._handlers = {
             "verify_customer": self._verify_customer,
             "get_customer": self._get_customer,
@@ -49,8 +52,20 @@ class ToolRegistry:
         self.calls.append((name, args, result))
         return result
 
+    def _typed_by_customer(self, email: str, last4: str) -> bool:
+        if self.customer_text is None:
+            return True  # no conversation attached (direct use), nothing to compare with
+        typed = " ".join(self.customer_text).lower()
+        return email.strip().lower() in typed and last4.strip() in typed
+
     def _verify_customer(self, args: dict) -> dict:
-        result = verify(self.state, self.api, str(args["email"]), str(args["card_last4"]))
+        email, last4 = str(args["email"]), str(args["card_last4"])
+        if not self._typed_by_customer(email, last4):
+            # Not a failed attempt: the customer never gave these details, so nothing is counted.
+            return {"ok": False, "reason": "not_provided",
+                    "message": "The customer has not given those details. Ask them for the last 4 digits "
+                               "of their card and the email on their account. Never guess or make them up."}
+        result = verify(self.state, self.api, email, last4)
         out = {"ok": result.ok, "message": result.message}
         if result.locked:
             out["locked"] = True

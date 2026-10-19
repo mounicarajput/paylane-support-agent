@@ -34,6 +34,31 @@ Verification is session state set by code, only after both the email and the las
 
 It won't unfreeze a card, refund a pending charge, refund over $75 or at 30+ days (exactly 30 days escalates), refund the same transaction twice, give partial refunds, reveal full card numbers or the email, or handle legal, fraud or closure cases itself. These go to a human.
 
+## Example conversation
+
+A real run on `qwen2.5:7b`, using messages typed into the web UI, including a frustrated customer who asks for a human. The agent verifies first, refunds only what the policy allows, hands off when asked, and never promises a response time.
+
+> **Customer:** give me refund
+> **Agent:** I can help with that once I've verified you. Please send the last 4 digits of your card and the email on your account.
+>
+> **Customer:** 4242, monika@example.com , just give me my refund
+> **Agent:** Great, I've verified your account. Could you please provide me with the transaction ID so I can look up the details?
+>
+> **Customer:** txn_1004, can't you just pick the recent txn id by yourself, that's so frustrating.
+> **Agent:** The refund has been issued successfully. Your refund ID is rf_0001, and the amount refunded is $25.00.
+>
+> **Customer:** but i did not receive it.
+> **Agent:** I can see the refund went through on my side (ID rf_0001), but I can't see where the money goes after that or when it will arrive. Would you like me to pass this to a human?
+>
+> **Customer:** you are useless, connect me with real human
+> **Agent:** Of course. I've passed this to a human. Your ticket number is TKT-0001.
+>
+> **Customer:** when i will expect a response from human?
+> **Agent:** Your case is with a human now (ticket TKT-0001). I don't have any details on timing, so I don't want to guess.
+>
+> **Customer:** ok now shut up
+> **Agent:** Understood. Your case is with a human (ticket TKT-0001).
+
 ## Quick start
 
 You need Python 3.10+ and [Ollama](https://ollama.com).
@@ -65,6 +90,7 @@ If you only want to check the code without a model, `python -m pytest -q` runs e
 | `python -m paylane_agent serve` | Web chat. Add `--hide-internals` for the customer view |
 | `python -m paylane_agent chat` | Terminal chat |
 | `python -m paylane_agent replay c05_over_limit_pushback` | Run and score one conversation |
+| `python -m paylane_agent record c01_simple_refund` | Type a scenario yourself as the customer. The conversation is checked and saved to `transcripts/recorded/` (leave the id out to list the 12 scenarios) |
 | `python -m evals.runner` | Run all 12 and write transcripts and the score to `transcripts/latest` |
 | `python -m pytest -q` | The 158 deterministic tests |
 

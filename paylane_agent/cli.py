@@ -2,6 +2,7 @@
 
     python -m paylane_agent chat [--provider anthropic] [--save out.md]
     python -m paylane_agent replay c05_over_limit_pushback
+    python -m paylane_agent record c01_simple_refund     # you type the customer, the transcript is saved
 """
 import argparse
 from dataclasses import replace
@@ -67,6 +68,16 @@ def cmd_replay(args) -> int:
     return 0 if res["passed"] else 1
 
 
+def cmd_record(args) -> int:
+    from evals.record import list_scenarios, record
+
+    if not args.scenario:
+        list_scenarios()
+        return 0
+    result = record(args.scenario, _provider(args))
+    return 0 if result.get("passed", True) else 1
+
+
 def cmd_serve(args) -> int:
     from .web.server import serve
 
@@ -81,16 +92,18 @@ def main(argv=None) -> int:
     chat.add_argument("--save", help="write the transcript to this markdown file")
     replay = sub.add_parser("replay", help="run one scripted conversation and score it")
     replay.add_argument("conversation")
+    record = sub.add_parser("record", help="type one of the 12 scenarios yourself and save the transcript")
+    record.add_argument("scenario", nargs="?", help="scenario id (leave out to list them)")
     serve = sub.add_parser("serve", help="web chat UI")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--hide-internals", action="store_true",
                        help="hide the session/tool-call panel (customer-facing view)")
-    for p in (chat, replay, serve):
+    for p in (chat, replay, record, serve):
         p.add_argument("--provider", choices=["ollama", "anthropic"])
     args = ap.parse_args(argv)
     try:
-        return {"chat": cmd_chat, "replay": cmd_replay, "serve": cmd_serve}[args.cmd](args)
+        return {"chat": cmd_chat, "replay": cmd_replay, "record": cmd_record, "serve": cmd_serve}[args.cmd](args)
     except ProviderError as e:
         print(f"[error] {e}")
         return 2

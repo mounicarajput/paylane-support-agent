@@ -40,6 +40,10 @@ CARD_TROUBLE = re.compile(
     r"\b(frozen|freeze|blocked|locked|not working|isn'?t working|won'?t work|declined|"
     r"stopped working|can'?t use my card)\b", I)
 REFUND_INTENT = re.compile(r"\b(refunds?|refunded|money back|reimburse\w*|chargeback|get my money)\b", I)
+# "I need my refund", "refund it", "can I get my money back": a request for a refund, not a question about them.
+PERSONAL_REFUND = re.compile(
+    r"\b(my|me|i)\b[^.?!]{0,30}\b(refund\w*|money back|reimburse\w*)\b|"
+    r"\b(refund|reimburse)\b[^.?!]{0,15}\b(me|it|this|that|them)\b|\bmoney back\b", I)
 ACCOUNT_DETAIL = re.compile(
     r"\b(my|the) (last|latest|recent|previous) (order|transaction|purchase|charge|payment)s?\b|"
     r"\bmy (balance|transactions|purchases|card status|account details)\b", I)
@@ -62,7 +66,15 @@ PUSHBACK = re.compile(
     r"\b(override|approve|make an exception|round (it )?down|just do it|just refund|just close|"
     r"just unfreeze|please just|come on)\b", I)
 SPLIT = re.compile(r"\b(split|partial|part of|half|two refunds|(refund|reimburse)\s+\$?\d+|at least)\b", I)
-WHAT_NEXT = re.compile(r"\bwhat (happens|now|next)\b|\bwhat's next\b|\bnow what\b", I)
+WHAT_NEXT = re.compile(
+    r"\bwhat (happens|now|next)\b|\bwhat's next\b|\bnow what\b|\bhow long\b|"
+    r"\bwhen (will|do|can|should|would) (i|we|they|someone|a human)\b[^.?!]{0,30}\b(expect|hear|get|receive|respond|reply|contact|call)\b|"
+    r"\bwhen (i|we) (will|can|should|would|do)\b[^.?!]{0,30}\b(expect|hear|get|receive)\b|"
+    r"\bwhen\b[^.?!]{0,25}\b(response|reply|answer|call|email)\b[^.?!]{0,15}\b(from|by)\b", I)
+NOT_RECEIVED = re.compile(
+    r"\b(did not|didn'?t|haven'?t|have not|never)\b[^.?!]{0,15}\b(receive\w*|get|got|see)\b|"
+    r"\bwhere('s| is) (my|the) (money|refund)\b", I)
+DISMISS = re.compile(r"\b(shut up|go away|stop talking|leave me alone|be quiet)\b", I)
 
 
 def detect_handoff(text: str) -> Optional[tuple]:
@@ -141,6 +153,15 @@ WHAT_NEXT_AFTER_HANDOFF = [
     "Your case is with a human now (ticket {tid}). I don't have any details on timing, so I don't want to guess.",
     "A human has it (ticket {tid}). I can't tell you when or how they'll be in touch, because I don't know.",
 ]
+DISMISSED_AFTER_HANDOFF = [
+    "Understood. Your case is with a human (ticket {tid}).",
+    "Okay, I'll leave it there. A human has your case (ticket {tid}).",
+]
+# The customer says a refund that did go through hasn't reached them. We can see our side only.
+REFUND_NOT_RECEIVED = [
+    "I can see the refund went through on my side (ID {rid}), but I can't see where the money goes after that or when it will arrive. Would you like me to pass this to a human?",
+    "My records show that refund as done (ID {rid}). I can't track the money beyond that. If you'd like, I can pass this to a human to look into it.",
+]
 ALREADY_REFUNDED = "That charge ({merchant}, ${amount}) has already been refunded, and I can't refund the same charge twice."
 ALREADY_REFUNDED_AGAIN = [
     "I know it's not what you want to hear, but a charge can only be refunded once, whoever approves it.",
@@ -175,8 +196,17 @@ VERIFY_FAILED = [
 ]
 ACK = "That's all taken care of."  # last resort when a reply was nothing but filler
 OFFER_HANDOFF = "Would you like me to pass this to a human to take a look?"
-ASK_TO_VERIFY = ("I can help with that once I've verified you. Please send the last 4 digits of your card "
-                 "and the email on your account.")
+# Verification always comes first: card last 4 and email, before any transaction ID.
+ASK_TO_VERIFY = [
+    "I can help with that once I've verified you. Please send the last 4 digits of your card and the email on your account.",
+    "Thanks. I still need the last 4 digits of your card and the email on your account before I can look at anything.",
+    "I want to get this sorted. Could you send the card's last 4 digits and the account email first?",
+]
+# Used when the model's own reply can't be sent after a refund already went through.
+REFUND_WENT_THROUGH = [
+    "Your refund went through. The refund ID is {rid}.",
+    "That's done: the refund went through (ID {rid}).",
+]
 
 
 # ---- checks on the model's reply -----------------------------------------------------------
@@ -190,8 +220,10 @@ CORPORATE = [
     r"\bfeel free to\b",
     r"\bplease (do not|don't) hesitate\b",
     r"\blet me know if (you|there)[^.?!]{0,40}\b(other|further|more|anything)\b",
-    r"\b(if|should) you (need|have|require|want)\b[^.?!]{0,40}\b(further|more|other|additional|any)\b[^.?!]{0,30}\b(assistance|help|questions?|support|information)\b",
+    r"\b(if|should) you (need|have|require|want)\b[^.?!]{0,40}\b(further|more|other|additional|any)\b[^.?!]{0,30}\b(assistance|help|questions?|support|information|issues?|concerns?|problems?)\b",
     r"\bis there anything else\b",
+    r"\bi'?m here to help\b",
+    r"\bif you need anything\b",
     r"\banything else (i|we) can (help|assist)\b",
     r"\bthank you for (your )?(patience|understanding|bringing)\b",
     r"\bfor any inconvenience\b",
@@ -207,6 +239,10 @@ TIMING = [
     r"\b(soon|shortly|tomorrow|momentarily|right away|straight away|immediately|instantly|at once)\b",
     r"\bas soon as\b",
     r"\b(hear back|get back to you|be in touch|follow up with you)\b",
+    r"\b(you'?ll|you will) (receive|get|hear)\b[^.?!]{0,25}\b(response|reply|call|email|message|update|answer)\b",
+    r"\b(response|reply|call|email|message) from (them|us|a human|the team|someone|an agent)\b",
+    r"\bexpect (a|an|to)\b[^.?!]{0,20}\b(response|reply|call|email|hear)\b",
+    r"\b(again later|check back)\b",
     r"\b(will|'ll|going to|should) (reach out|contact|email|call|text|respond|reply)\b",
     r"\b(someone|a human|an agent|a specialist|a representative|the team|they) (will|should|'ll) "
     r"(reach|contact|email|call|text|respond|reply|get back|follow|be in touch)\b",
@@ -242,6 +278,10 @@ INVENTED_TICKET = re.compile(r"\b(?:ticket|case|reference)\b[^.\n]{0,25}?\b(TKT-
 INVENTED_REFUND = re.compile(r"\b(rf_\d+)\b|\brefund (?:id|number)\b[^.\n]{0,15}?\b(\d{4,})\b", I)
 
 
+# A leftover that starts like a condition and has no main clause ("If you have any other issues").
+DANGLING = re.compile(r"^(if|should|when|whenever|once|in case)\b", I)
+
+
 def strip_filler(text: str) -> str:
     """Drop corporate-filler sentences, or the filler tail of a sentence ("Done, feel free to ask")."""
     kept = []
@@ -251,7 +291,25 @@ def strip_filler(text: str) -> str:
             kept.append(sentence)
             continue
         head = re.sub(r"[\s,;:\-]+(and|but|so)?$", "", sentence[:hit.start()].rstrip(), flags=I)
-        if len(head.split()) >= 2:
+        if len(head.split()) >= 2 and not DANGLING.match(head):  # "If you have any other issues" is no sentence
+            kept.append(head + ".")
+    return " ".join(kept).strip()
+
+
+def strip_timing(text: str) -> str:
+    """Drop sentences (or sentence tails) that promise timing, e.g. 'You should see it shortly.'"""
+    kept = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        hit = next((m for p in TIMING if (m := re.search(p, sentence, I))), None)
+        if hit is None:
+            kept.append(sentence)
+            continue
+        # Keep only a complete clause before a comma or semicolon that comes ahead of the promise
+        # ("Your refund ID is rf_0001, and you'll see it soon" -> "Your refund ID is rf_0001").
+        cut = max(sentence.rfind(",", 0, hit.start()), sentence.rfind(";", 0, hit.start()))
+        head = sentence[:cut].strip() if cut > 0 else ""
+        head = re.sub(r"[\s,;:\-]+(and|but|so)?$", "", head, flags=I)
+        if len(head.split()) >= 3 and not DANGLING.match(head):
             kept.append(head + ".")
     return " ".join(kept).strip()
 
@@ -294,6 +352,9 @@ def check_reply(text: str, registry) -> Optional[Violation]:
     if _hit(TIMING, text):
         return Violation("timing_promise", "Don't mention when, how, or by whom the customer will be contacted, "
                          "or how long anything takes. None of that is known. Just say what was done.")
+    if not registry.state.verified and re.search(r"\btransaction (id|number)\b|\btxn[_ ]?id\b", low):
+        return Violation("asked_for_transaction_first", "Verification comes first. Ask for the last 4 digits of "
+                         "the card and the email on the account, not the transaction ID.")
     if _hit(CORPORATE, text):
         return Violation("corporate_filler", "Cut filler like 'feel free to ask', 'let me know if you need anything "
                          "else' and 'thank you for your patience'. Keep it short and warm, like a person.")

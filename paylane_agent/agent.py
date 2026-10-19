@@ -54,12 +54,24 @@ class Agent:
         self._blocked: Optional[dict] = None  # last transaction that can't be refunded (already refunded / pending)
         self._asked_which_charge = False
         self._used: dict = {}
+        # What the customer asked for earlier in the conversation, so a request made before
+        # verification is carried out once they verify.
+        self._refund_requested = False
+        self._refunds_before_turn = 0
+        self._pending_txn_ids: list = []
+        self.registry.customer_text = []
 
     # ---- one customer turn ---------------------------------------------------------------
     def respond(self, user_text: str) -> str:
         self.messages.append({"role": "user", "content": user_text})
         self.transcript.add("user", text=user_text)
         self._last_user = user_text
+        self.registry.customer_text.append(user_text)
+        self._refunds_before_turn = len(self.registry.api.refunds)
+        self._refund_requested |= bool(policy.PERSONAL_REFUND.search(user_text))
+        for txn_id in policy.extract_txn_ids(user_text):
+            if txn_id not in self._pending_txn_ids:
+                self._pending_txn_ids.append(txn_id)
 
         early = self._before_model(user_text)
         if early is not None:
@@ -83,12 +95,19 @@ class Agent:
                 self.messages.append({"role": "user", "content": NUDGE})
                 continue
 
-            text = policy.strip_filler(reply.text)  # filler is cut, not worth a retry or a handoff
+            # Timing promises and filler are cut out of the reply, not worth a retry or a handoff.
+            text = policy.strip_filler(policy.strip_timing(reply.text))
             if text != reply.text.strip():
-                self.transcript.add("note", text=f"filler removed from: {reply.text!r}")
+                self.transcript.add("note", text=f"timing or filler removed from: {reply.text!r}")
                 self.messages[-1]["content"] = text
-            problem = policy.check_reply(text, self.registry) if text else policy.Violation(
-                "empty_reply", "Your reply was only filler. Answer what the customer said, briefly.")
+            if text:
+                problem = policy.check_reply(text, self.registry)
+            elif policy.strip_filler(reply.text):  # real content, but all of it was a promise
+                problem = policy.Violation("timing_promise", "Your whole reply was a promise about timing or "
+                                           "contact. Say what was actually done, or ask what you need.")
+            else:  # nothing but filler
+                problem = policy.Violation("empty_reply", "Your reply was only filler. Answer what the "
+                                           "customer said, briefly.")
             if problem is None:
                 return self._finish(text)
             self.transcript.add("note", text=f"reply blocked ({problem.name}): {reply.text!r}")
@@ -121,8 +140,12 @@ class Agent:
         if state.handed_off:
             return self._after_handoff_reply(text)
 
-        # "Yes please go ahead" / "thanks" after a refund that already went through: don't say it all again.
         refunds = self.registry.api.refunds
+        # "I never received it" after a refund that went through: say what we can and can't see.
+        if refunds and policy.NOT_RECEIVED.search(text) and not policy.extract_txn_ids(text):
+            return self._pick("not_received", policy.REFUND_NOT_RECEIVED).format(rid=refunds[-1]["refund_id"])
+
+        # "Yes please go ahead" / "thanks" after a refund that already went through: don't say it all again.
         if refunds and len(text.split()) <= 8 and not policy.extract_txn_ids(text):
             if policy.GO_AHEAD.search(text):
                 return self._pick("done", policy.REFUND_ALREADY_DONE).format(rid=refunds[-1]["refund_id"])
@@ -130,6 +153,7 @@ class Agent:
                 return self._pick("welcome", policy.YOURE_WELCOME)
 
         creds = policy.extract_credentials(text)
+        was_verified = state.verified
         if creds and (not state.verified or creds != self._last_creds):
             self._last_creds = creds
             res = self._auto_tool("verify_customer", {"email": creds[0], "card_last4": creds[1]})
@@ -138,11 +162,16 @@ class Agent:
                     return policy.HANDOFF_REPLIES["verification_failed"].format(tid=res.get("ticket_id"))
                 variant = policy.VERIFY_FAILED[min(state.failed_checks - 1, len(policy.VERIFY_FAILED) - 1)]
                 return variant or res["message"]
-        elif not state.verified and not creds and policy.ACCOUNT_DETAIL.search(text):
-            return policy.ASK_TO_VERIFY
+        elif not state.verified and not creds and (
+                policy.ACCOUNT_DETAIL.search(text) or policy.PERSONAL_REFUND.search(text)
+                or policy.CARD_TROUBLE.search(text)):
+            # Verification comes first, before a transaction ID or anything else.
+            return self._pick("ask_verify", policy.ASK_TO_VERIFY)
 
-        txn_ids = policy.extract_txn_ids(text)
-        wants_refund = bool(policy.REFUND_INTENT.search(text))
+        # Just verified: pick up what they asked for before they verified (a refund and its transaction).
+        just_verified = state.verified and not was_verified
+        txn_ids = policy.extract_txn_ids(text) or (self._pending_txn_ids[:2] if just_verified else [])
+        wants_refund = bool(policy.REFUND_INTENT.search(text)) or self._refund_requested
         if state.verified:
             for txn_id in txn_ids[:2]:
                 res = self._auto_tool("get_transaction", {"txn_id": txn_id})
@@ -173,6 +202,8 @@ class Agent:
     def _after_handoff_reply(self, text: str) -> Optional[str]:
         """After a handoff the customer often pushes. The answer is always the same fact, said kindly."""
         tid = self.registry.state.handoff_ticket_id
+        if policy.DISMISS.search(text):
+            return self._pick("dismissed", policy.DISMISSED_AFTER_HANDOFF).format(tid=tid)
         if policy.WHAT_NEXT.search(text):
             return self._pick("next", policy.WHAT_NEXT_AFTER_HANDOFF).format(tid=tid)
         if policy.SPLIT.search(text) and policy.REFUND_INTENT.search(text):
@@ -241,6 +272,9 @@ class Agent:
         state = self.registry.state
         if state.handed_off:
             return self._pick("already", policy.ALREADY_HANDED_OFF).format(tid=state.handoff_ticket_id)
+        refunds = self.registry.api.refunds
+        if len(refunds) > self._refunds_before_turn:  # a refund went through this turn: never say a human took over
+            return self._pick("went_through", policy.REFUND_WENT_THROUGH).format(rid=refunds[-1]["refund_id"])
         if problem.name == "empty_reply":
             return policy.ACK
         if problem.name == "false_handoff_claim":

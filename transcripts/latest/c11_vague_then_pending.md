@@ -22,7 +22,7 @@
 
 > result: `{"ok": true, "txn_id": "txn_1006", "amount": 50.0, "date": "2026-10-14T20:15:00Z", "merchant": "Skyline Taxi", "status": "pending", "refund_path": "none", "refund_reason": "not_settled", "refund_note": "Cannot be refunded (not_settled). Do not call issue_refund."}`
 
-_filler removed from: 'The transaction with Skyline Taxi for $50.00 is still pending and cannot be refunded at this time. Once it settles, we can look into it further. Is there anything else you need help with?'_
+_timing or filler removed from: 'The transaction with Skyline Taxi for $50.00 is still pending and cannot be refunded at this time. Once it settles, we can look into it further. Is there anything else you need help with?'_
 
 **Agent:** The transaction with Skyline Taxi for $50.00 is still pending and cannot be refunded at this time. Once it settles, we can look into it further.
 

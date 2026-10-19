@@ -4,6 +4,7 @@ Real model runs (`qwen2.5:7b` through Ollama, temperature 0). Live runs are non-
 
 | Folder | What it is |
 |---|---|
+| `recorded/` | Conversations typed live in the CLI with `python -m paylane_agent record <scenario>`. Each file has the full conversation with tool calls, the pass/fail checks, and a plain-language list of the failures the safety layer caught and how they were handled. `report.md` there tracks the score as scenarios are recorded |
 | [latest/](latest/) | The most recent full run of all 12 conversations, with `report.md` (score) and `results.json` (every check) |
 | [failure_and_fix/](failure_and_fix/) | One conversation (c01) at three stages: the failure, the prompt-only fix that did not work, and the fix that did. See [docs/failure_and_fix.md](../docs/failure_and_fix.md) |
 

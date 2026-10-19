@@ -27,7 +27,7 @@ def test_tool_loop_runs_tools_then_answers():
         LLMResponse(text="Done, refunded."),
     ])
     agent = Agent(p, ToolRegistry(), system_prompt="x")
-    assert agent.respond("refund txn_1001") == "Done, refunded."
+    assert agent.respond("refund txn_1001 for monika@example.com, numbers 4242 and 1234") == "Done, refunded."
     assert [c[0] for c in agent.registry.calls] == ["verify_customer", "issue_refund"]
     assert agent.registry.api.refunds[0]["txn_id"] == "txn_1001"
     kinds = [e["type"] for e in agent.transcript.events]
@@ -42,7 +42,7 @@ def test_stalled_reply_is_suppressed_and_model_nudged_to_act():
         LLMResponse(text="Refunded $40."),
     ])
     agent = Agent(p, ToolRegistry(), system_prompt="x")
-    assert agent.respond("refund txn_1001") == "Refunded $40."
+    assert agent.respond("refund txn_1001 for monika@example.com, numbers 4242 and 1234") == "Refunded $40."
     assert agent.registry.api.refunds[0]["txn_id"] == "txn_1001"
     assert [e["text"] for e in agent.transcript.events if e["type"] == "assistant"] == ["Refunded $40."]
     assert any(e["type"] == "note" for e in agent.transcript.events)

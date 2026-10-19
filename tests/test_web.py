@@ -65,7 +65,7 @@ def test_chat_returns_reply_tools_and_state(server):
         LLMResponse(tool_calls=[ToolCall("c", "verify_customer", {"email": "monika@example.com", "card_last4": "4242"})]),
         LLMResponse(text="You're verified."),
     ]))
-    code, data = post(url, "/api/chat", {"session_id": SID, "message": "hello, please check my account"})
+    code, data = post(url, "/api/chat", {"session_id": SID, "message": "hello, check my account: monika@example.com, numbers 4242 and 1234"})
     assert code == 200 and data["reply"] == "You're verified."
     assert [t["name"] for t in data["tools"]] == ["verify_customer", "verify_customer"]
     assert data["state"]["verified"] is True

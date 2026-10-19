@@ -188,7 +188,7 @@ def test_account_detail_question_without_verification_asks_for_both_details():
 def test_model_calling_escalating_tools_is_also_caught_after_the_call():
     a = agent(call("verify_customer", email="monika@example.com", card_last4="4242"),
               call("issue_refund", txn_id="txn_1002", amount=120))
-    reply = a.respond("please look at txn_1002")  # no refund wording, so the agent doesn't pre-empt
+    reply = a.respond("please look at txn_1002 for monika@example.com, numbers 4242 and 1234")  # no refund wording, so the agent doesn't pre-empt
     assert "TKT-0001" in reply and a.registry.api.refunds == []
 
 
@@ -368,3 +368,133 @@ def test_reply_that_is_only_filler_gets_a_retry_then_a_short_ack_never_a_ticket(
     assert a.respond("thanks!") == policy.ACK and a.registry.api.tickets == []
     b = agent(say("Feel free to ask."), say("You're welcome!"))
     assert b.respond("thanks!") == "You're welcome!"
+
+
+# ---- fixes from the web UI screenshot -----------------------------------------------------------
+def test_verification_is_asked_first_with_new_wording_each_time_then_the_earlier_request_is_carried_out():
+    a = agent(call("issue_refund", txn_id="txn_1004", amount=25), say("Your $25 StreamBox refund went through."))
+    r1 = a.respond("i need my refund, really had bad experience.")
+    r2 = a.respond("txn_1004 , please refund it soon")
+    assert "last 4" in r1 and "email" in r1 and "transaction" not in r1.lower()
+    assert "last 4" in r2 and r2 != r1 and a.provider.calls == 0 and a.registry.state.failed_checks == 0
+    reply = a.respond("4242, monika@example.com")
+    # verified, the transaction named earlier was looked up on its own, the model then refunded it
+    assert reply == "Your $25 StreamBox refund went through."
+    assert [c[0] for c in a.registry.calls][:2] == ["verify_customer", "get_transaction"]
+    assert a.registry.api.refunds[0]["txn_id"] == "txn_1004" and a.registry.api.tickets == []
+
+
+def test_invented_credentials_are_refused_and_do_not_count_as_a_failed_check():
+    a = agent(call("verify_customer", email="johndoe@example.com", card_last4="2345"),
+              say("Could you send the last 4 digits of your card and your email?"))
+    a.respond("hello, I had a bad experience")
+    first = a.registry.calls[0]
+    assert first[0] == "verify_customer" and first[2]["reason"] == "not_provided"
+    assert a.registry.state.failed_checks == 0 and not a.registry.state.verified
+
+
+def test_credentials_the_customer_did_type_are_still_accepted_when_the_model_verifies():
+    a = agent(call("verify_customer", email="monika@example.com", card_last4="4242"), say("Verified, thanks."))
+    a.respond("my details: monika@example.com, numbers 4242 and 1234")
+    assert a.registry.state.verified
+
+
+def test_model_cannot_ask_for_a_transaction_id_before_verification():
+    a = agent(say("Could you please provide the transaction ID?"), say("First, please send the last 4 digits of your card and the email on your account."))
+    reply = a.respond("I had a really bad time with a shop")
+    assert "last 4" in reply and "transaction" not in reply.lower()
+    # once verified, asking for one is fine
+    r = reg()
+    assert policy.check_reply("Could you give me the transaction ID?", r) is None
+
+
+def verified_agent(*replies):
+    """An agent whose customer has really typed their details (so verification is allowed)."""
+    a = agent(say("Thanks, you're verified."), *replies)
+    a.respond("Hi, my card ends in 4242 and my email is monika@example.com")
+    assert a.registry.state.verified
+    return a
+
+
+def test_timing_promise_is_cut_from_a_reply_instead_of_triggering_a_handoff():
+    assert policy.strip_timing("The refund went through. You should see it in your account shortly.") == "The refund went through."
+    assert policy.strip_timing("Your refund ID is rf_0001, and it will reach you soon.") == "Your refund ID is rf_0001."
+    assert policy.strip_timing("Refunds are for charges under 30 days old.") == "Refunds are for charges under 30 days old."
+    a = verified_agent(call("issue_refund", txn_id="txn_1004", amount=25),
+                       say("The refund went through, ID rf_0001. You should see it in your account shortly."))
+    reply = a.respond("please refund txn_1004")
+    assert reply == "The refund went through, ID rf_0001." and a.registry.api.tickets == []
+
+
+def test_if_the_model_cannot_write_a_safe_reply_after_a_refund_the_customer_is_told_the_truth_not_handed_off():
+    a = verified_agent(call("issue_refund", txn_id="txn_1004", amount=25), say("Ticket 123456, a human will call you."))
+    reply = a.respond("please refund txn_1004")
+    assert "rf_0001" in reply and "human" not in reply.lower()
+    assert a.registry.api.tickets == [] and len(a.registry.api.refunds) == 1
+
+
+def test_personal_refund_requests_are_told_apart_from_policy_questions():
+    for text in ["i need my refund", "can I get my money back", "please refund it", "I'd like a refund on txn_1005"]:
+        assert policy.PERSONAL_REFUND.search(text), text
+    for text in ["how do refunds work?", "Is there a refund limit?", "What is your refund policy?"]:
+        assert not policy.PERSONAL_REFUND.search(text), text
+
+
+def test_filler_cut_leaves_no_dangling_condition():
+    raw = "Your refund has been issued. If you have any other issues, feel free to reach out."
+    assert policy.strip_filler(raw) == "Your refund has been issued."
+    assert policy.strip_filler("Done. If you run into anything, feel free to ask.") == "Done."
+    assert policy.strip_filler("Done, thanks for waiting. Feel free to ask.") == "Done, thanks for waiting."
+
+
+# ---- fixes from the second UI screenshot ---------------------------------------------------------
+def test_the_unsupported_promises_and_filler_seen_in_the_ui_are_caught():
+    for text, name in [("I understand your frustration. You'll receive a response from them directly.", "timing_promise"),
+                       ("It might help to check your account again later.", "timing_promise"),
+                       ("You will get an update by email.", "timing_promise"),
+                       ("I'm here to help if you need anything else.", "corporate_filler"),
+                       ("If you need anything, I'm here.", "corporate_filler")]:
+        assert policy.check_reply(text, reg()).name == name, text
+    # ordinary facts are still fine
+    r = reg()
+    r.execute("issue_refund", {"txn_id": "txn_1001", "amount": 40})
+    for ok in ["Your refund ID is rf_0001.", "I can't refund a pending charge.", "You'll get a refund of $40."]:
+        assert policy.check_reply(ok, r) is None, ok
+
+
+def test_i_did_not_receive_it_after_a_refund_gets_an_honest_answer_and_an_offer_not_a_promise():
+    a = verified_agent(call("issue_refund", txn_id="txn_1004", amount=25), say("Your refund went through, ID rf_0001."))
+    a.respond("please refund txn_1004")
+    r1 = a.respond("but i did not receive it.")
+    assert "rf_0001" in r1 and "human" in r1 and a.registry.api.tickets == []
+    assert "soon" not in r1 and "within" not in r1
+    r2 = a.respond("I still haven't received it")
+    assert r2 != r1
+
+
+def test_when_will_i_hear_back_after_a_handoff_gets_no_promise_and_a_rude_goodbye_is_met_kindly():
+    a = agent()
+    a.respond("connect me with a real human")
+    replies = [a.respond("when i will expect a response from human?"), a.respond("how long will it take?")]
+    for r in replies:
+        assert "TKT-0001" in r and ("don't want to guess" in r or "because I don't know" in r), r
+    assert replies[0] != replies[1]
+    assert a.provider.calls == 0
+    bye = a.respond("ok now shut up")
+    assert "TKT-0001" in bye and "help" not in bye.lower() and a.provider.calls == 0
+
+
+def test_the_whole_second_screenshot_conversation_stays_inside_the_rules():
+    a = agent(say("Great, I've verified you. Could you please provide the transaction ID?"),
+              call("issue_refund", txn_id="txn_1004", amount=25), say("The refund has been issued. Your refund ID is rf_0001."))
+    out = [a.respond("give me refund"),
+           a.respond("4242, monika@example.com , just give me my refund"),
+           a.respond("txn_1004, can't you just pick the recent txn id by yourself, that's so frustrating."),
+           a.respond("but i did not receive it."),
+           a.respond("you are useless, connect me with real human"),
+           a.respond("when i will expect a response from human?"),
+           a.respond("ok now shut up")]
+    assert "last 4" in out[0] and "rf_0001" in out[2] and "TKT-0001" in out[4]
+    for reply in out:
+        assert policy.check_reply(reply, a.registry) is None, reply
+    assert len(set(out)) == len(out) and len(a.registry.api.tickets) == 1 and len(a.registry.api.refunds) == 1
