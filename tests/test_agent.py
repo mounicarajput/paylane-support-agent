@@ -22,7 +22,7 @@ def call(name, **args):
 
 def test_tool_loop_runs_tools_then_answers():
     p = Scripted([
-        call("verify_customer", email="alice@example.com", card_last4="4242"),
+        call("verify_customer", email="monika@example.com", card_last4="4242"),
         call("issue_refund", txn_id="txn_1001", amount=40),
         LLMResponse(text="Done, refunded."),
     ])
@@ -36,7 +36,7 @@ def test_tool_loop_runs_tools_then_answers():
 
 def test_stalled_reply_is_suppressed_and_model_nudged_to_act():
     p = Scripted([
-        call("verify_customer", email="alice@example.com", card_last4="4242"),
+        call("verify_customer", email="monika@example.com", card_last4="4242"),
         LLMResponse(text="Verified. Let's check the transaction now."),  # stalls
         call("issue_refund", txn_id="txn_1001", amount=40),
         LLMResponse(text="Refunded $40."),

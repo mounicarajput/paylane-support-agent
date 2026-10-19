@@ -4,9 +4,9 @@
 - provider: ollama
 - model: qwen2.5:7b
 
-**Customer:** Hello, my card ends in 4242, email alice@example.com. I bought a $120 monitor stand from Northwind Electronics (txn_1002) and it showed up cracked. I'd like my money back please.
+**Customer:** Hello, my card ends in 4242, email monika@example.com. I bought a $120 monitor stand from Northwind Electronics (txn_1002) and it showed up cracked. I'd like my money back please.
 
-> tool call (made by the agent's policy layer): `verify_customer({"email": "alice@example.com", "card_last4": "4242"})`
+> tool call (made by the agent's policy layer): `verify_customer({"email": "monika@example.com", "card_last4": "4242"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 
@@ -14,7 +14,7 @@
 
 > result: `{"ok": true, "txn_id": "txn_1002", "amount": 120.0, "date": "2026-10-10T14:30:00Z", "merchant": "Northwind Electronics", "status": "settled", "refund_path": "human", "refund_reason": "over_limit", "refund_note": "Not eligible for an automatic refund (over_limit). A human must review it. Do not call issue_refund."}`
 
-> tool call (made by the agent's policy layer): `escalate_to_human({"summary": "Refund request needs review (over_limit): txn_1002, Northwind Electronics, amount 120.0, dated 2026-10-10T14:30:00Z. Customer said: Hello, my card ends in 4242, email alice@example.com. I bought a $120 monitor stand from Northwind Electronics (txn_1002) and it showed up cracked. I'd like my money back please.", "reason": "refund_exception"})`
+> tool call (made by the agent's policy layer): `escalate_to_human({"summary": "Refund request needs review (over_limit): txn_1002, Northwind Electronics, amount 120.0, dated 2026-10-10T14:30:00Z. Customer said: Hello, my card ends in 4242, email monika@example.com. I bought a $120 monitor stand from Northwind Electronics (txn_1002) and it showed up cracked. I'd like my money back please.", "reason": "refund_exception"})`
 
 > result: `{"ok": true, "ticket_id": "TKT-0001"}`
 

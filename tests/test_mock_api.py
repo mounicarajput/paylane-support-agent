@@ -2,7 +2,7 @@ from paylane_agent.tools.mock_api import MockAPI
 
 
 def test_get_customer_shape_and_unverified():
-    c = MockAPI().get_customer("Alice@Example.com ")
+    c = MockAPI().get_customer("Monika@Example.com ")
     assert c["id"] == "c_1001" and c["verified"] is False
     assert set(c) == {"id", "name", "card_last4", "status", "verified"}
 

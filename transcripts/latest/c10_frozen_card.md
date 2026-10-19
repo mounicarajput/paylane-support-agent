@@ -4,17 +4,17 @@
 - provider: ollama
 - model: qwen2.5:7b
 
-**Customer:** My card keeps getting declined and I'm standing at the checkout. Card ends in 1111, email ben@example.com. What's going on?
+**Customer:** My card keeps getting declined and I'm standing at the checkout. Card ends in 1111, email deep@example.com. What's going on?
 
-> tool call (made by the agent's policy layer): `verify_customer({"email": "ben@example.com", "card_last4": "1111"})`
+> tool call (made by the agent's policy layer): `verify_customer({"email": "deep@example.com", "card_last4": "1111"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 
-> tool call (made by the agent's policy layer): `get_customer({"email": "ben@example.com"})`
+> tool call (made by the agent's policy layer): `get_customer({"email": "deep@example.com"})`
 
-> result: `{"ok": true, "id": "c_1002", "name": "Ben Carter", "card_status": "frozen"}`
+> result: `{"ok": true, "id": "c_1002", "name": "Deep", "card_status": "frozen"}`
 
-> tool call (made by the agent's policy layer): `escalate_to_human({"summary": "Card is frozen. Customer said: My card keeps getting declined and I'm standing at the checkout. Card ends in 1111, email ben@example.com. What's going on?", "reason": "frozen_card"})`
+> tool call (made by the agent's policy layer): `escalate_to_human({"summary": "Card is frozen. Customer said: My card keeps getting declined and I'm standing at the checkout. Card ends in 1111, email deep@example.com. What's going on?", "reason": "frozen_card"})`
 
 > result: `{"ok": true, "ticket_id": "TKT-0001"}`
 
@@ -22,7 +22,9 @@
 
 **Customer:** Why would it be frozen?? I didn't do anything!
 
-**Agent:** I understand how frustrating this is. I've passed your concern to a human who can look into it further. Your ticket number is TKT-0001. They will review the situation.
+_filler removed from: "I understand how frustrating this is. I've passed your issue to a human who can look into it further. Your ticket number is TKT-0001. Please let me know if you have any other questions."_
+
+**Agent:** I understand how frustrating this is. I've passed your issue to a human who can look into it further. Your ticket number is TKT-0001.
 
 **Customer:** Please just unfreeze it, I need it today for rent.
 

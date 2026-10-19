@@ -1,5 +1,5 @@
 [
-  {"id": "c_1001", "name": "Alice Moreno", "email": "alice@example.com", "card_last4": "4242", "status": "active"},
-  {"id": "c_1002", "name": "Ben Carter", "email": "ben@example.com", "card_last4": "1111", "status": "frozen"},
-  {"id": "c_1003", "name": "Chloe Wu", "email": "chloe@example.com", "card_last4": "9876", "status": "active"}
+  {"id": "c_1001", "name": "Monika", "email": "monika@example.com", "card_last4": "4242", "status": "active"},
+  {"id": "c_1002", "name": "Deep", "email": "deep@example.com", "card_last4": "1111", "status": "frozen"},
+  {"id": "c_1003", "name": "Fini", "email": "fini@example.com", "card_last4": "9876", "status": "active"}
 ]

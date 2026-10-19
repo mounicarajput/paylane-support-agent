@@ -4,9 +4,9 @@
 - provider: ollama
 - model: qwen2.5:7b
 
-**Customer:** Hi, I bought a coffee at Bean Counter Cafe by mistake. Can I get a refund? My card ends in 4242 and my email is alice@example.com. The transaction ID is txn_1001.
+**Customer:** Hi, I bought a coffee at Bean Counter Cafe by mistake. Can I get a refund? My card ends in 4242 and my email is monika@example.com. The transaction ID is txn_1001.
 
-> tool call: `verify_customer({"email": "alice@example.com", "card_last4": "4242"})`
+> tool call: `verify_customer({"email": "monika@example.com", "card_last4": "4242"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 

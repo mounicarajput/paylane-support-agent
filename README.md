@@ -54,9 +54,9 @@ If you only want to check the code without a model, `python -m pytest -q` runs e
 
 | Customer | Email | Card last 4 | Notes |
 |---|---|---|---|
-| Alice | alice@example.com | 4242 | Active. `txn_1001` ($40) is refundable, `txn_1002` ($120) goes to a human |
-| Ben | ben@example.com | 1111 | Card frozen |
-| Chloe | chloe@example.com | 9876 | Active |
+| Monika | monika@example.com | 4242 | Active. `txn_1001` ($40) is refundable, `txn_1002` ($120) goes to a human |
+| Deep | deep@example.com | 1111 | Card frozen |
+| Fini | fini@example.com | 9876 | Active |
 
 ## Commands
 

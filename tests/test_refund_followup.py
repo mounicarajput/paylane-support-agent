@@ -18,7 +18,7 @@ class Model(Provider):
 def refunded_agent():
     a = Agent(Model(LLMResponse(tool_calls=[ToolCall("c", "issue_refund", {"txn_id": "txn_1001", "amount": 40})]),
                     LLMResponse(text="Your refund went through.")), ToolRegistry(), system_prompt="x")
-    a.respond("Refund txn_1001 please. My card ends in 4242 and my email is alice@example.com.")
+    a.respond("Refund txn_1001 please. My card ends in 4242 and my email is monika@example.com.")
     assert a.registry.api.refunds
     return a
 

@@ -93,7 +93,7 @@ def extract_credentials(text: str) -> Optional[tuple]:
     email, last4 = EMAIL.search(text), LAST4.search(text)
     if email and last4:
         return email.group(0).lower(), last4.group(1)
-    if email:  # "Try 5678 then, alice@example.com": one stray 4-digit number next to an email
+    if email:  # "Try 5678 then, monika@example.com": one stray 4-digit number next to an email
         bare = BARE4.findall(text)
         if len(bare) == 1:
             return email.group(0).lower(), bare[0]

@@ -3,7 +3,7 @@ import pytest
 from paylane_agent.tools.registry import ToolRegistry
 
 
-def verified(email="alice@example.com", last4="4242") -> ToolRegistry:
+def verified(email="monika@example.com", last4="4242") -> ToolRegistry:
     reg = ToolRegistry()
     assert reg.execute("verify_customer", {"email": email, "card_last4": last4})["ok"]
     return reg
@@ -21,7 +21,7 @@ def test_unverified_refund_blocked_and_nothing_issued():
 
 def test_unverified_cannot_read_account():
     reg = ToolRegistry()
-    assert reg.execute("get_customer", {"email": "alice@example.com"})["reason"] == "not_verified"
+    assert reg.execute("get_customer", {"email": "monika@example.com"})["reason"] == "not_verified"
     assert reg.execute("get_transaction", {"txn_id": "txn_1001"})["reason"] == "not_verified"
 
 
@@ -78,11 +78,11 @@ def test_other_customers_transaction_is_not_found():
 def test_three_failures_lock_and_auto_handoff():
     reg = ToolRegistry()
     for _ in range(2):
-        assert not reg.execute("verify_customer", {"email": "alice@example.com", "card_last4": "0000"}).get("locked")
-    r = reg.execute("verify_customer", {"email": "alice@example.com", "card_last4": "0000"})
+        assert not reg.execute("verify_customer", {"email": "monika@example.com", "card_last4": "0000"}).get("locked")
+    r = reg.execute("verify_customer", {"email": "monika@example.com", "card_last4": "0000"})
     assert r["locked"] and r["ticket_id"] == "TKT-0001"
     # correct details no longer help; no second ticket
-    r = reg.execute("verify_customer", {"email": "alice@example.com", "card_last4": "4242"})
+    r = reg.execute("verify_customer", {"email": "monika@example.com", "card_last4": "4242"})
     assert not r["ok"] and r["ticket_id"] == "TKT-0001" and len(reg.api.tickets) == 1
     assert refund(reg, "txn_1001", 40)["reason"] == "handed_off"
 
@@ -91,7 +91,7 @@ def test_wrong_card_on_second_check_blocks_account_access():
     # Exact UI scenario: verified, refund txn_1001, then "txn_1006 too" with a wrong card.
     reg = verified()
     assert refund(reg, "txn_1001", 40)["ok"]
-    r = reg.execute("verify_customer", {"email": "alice@example.com", "card_last4": "5234"})
+    r = reg.execute("verify_customer", {"email": "monika@example.com", "card_last4": "5234"})
     assert not r["ok"] and "5234" not in str(r) and "4242" not in str(r)
     assert reg.execute("get_transaction", {"txn_id": "txn_1006"})["reason"] == "not_verified"
     assert refund(reg, "txn_1004", 25)["reason"] == "not_verified"
@@ -124,15 +124,15 @@ def test_fraud_over_500_high_priority_else_normal_but_still_handed_off():
 
 def test_get_customer_hides_email_and_card_digits():
     reg = verified()
-    r = reg.execute("get_customer", {"email": "alice@example.com"})
+    r = reg.execute("get_customer", {"email": "monika@example.com"})
     assert r["ok"] and r["card_status"] == "active"
     text = str(r)
-    assert "4242" not in text and "alice@example.com" not in text
+    assert "4242" not in text and "monika@example.com" not in text
 
 
 def test_get_customer_for_another_email_not_found():
     reg = verified()
-    assert reg.execute("get_customer", {"email": "chloe@example.com"})["reason"] == "not_found"
+    assert reg.execute("get_customer", {"email": "fini@example.com"})["reason"] == "not_found"
 
 
 def test_bad_calls_do_not_crash():

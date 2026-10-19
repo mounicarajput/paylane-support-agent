@@ -62,7 +62,7 @@ def test_index_and_info(server):
 
 def test_chat_returns_reply_tools_and_state(server):
     url = server(Fake([
-        LLMResponse(tool_calls=[ToolCall("c", "verify_customer", {"email": "alice@example.com", "card_last4": "4242"})]),
+        LLMResponse(tool_calls=[ToolCall("c", "verify_customer", {"email": "monika@example.com", "card_last4": "4242"})]),
         LLMResponse(text="You're verified."),
     ]))
     code, data = post(url, "/api/chat", {"session_id": SID, "message": "hello, please check my account"})
@@ -74,7 +74,7 @@ def test_chat_returns_reply_tools_and_state(server):
 
 def test_sessions_are_isolated_and_reset_clears(server):
     url = server(Fake([
-        LLMResponse(tool_calls=[ToolCall("c", "verify_customer", {"email": "alice@example.com", "card_last4": "4242"})]),
+        LLMResponse(tool_calls=[ToolCall("c", "verify_customer", {"email": "monika@example.com", "card_last4": "4242"})]),
         LLMResponse(text="ok"), LLMResponse(text="other"), LLMResponse(text="again"),
     ]))
     post(url, "/api/chat", {"session_id": SID, "message": "a"})

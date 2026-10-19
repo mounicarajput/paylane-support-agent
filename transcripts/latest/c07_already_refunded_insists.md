@@ -4,9 +4,9 @@
 - provider: ollama
 - model: qwen2.5:7b
 
-**Customer:** Hi, my card ends in 4242 and my email is alice@example.com. I'd like a refund on txn_1005, Corner Pizza, $30. The food was cold.
+**Customer:** Hi, my card ends in 4242 and my email is monika@example.com. I'd like a refund on txn_1005, Corner Pizza, $30. The food was cold.
 
-> tool call (made by the agent's policy layer): `verify_customer({"email": "alice@example.com", "card_last4": "4242"})`
+> tool call (made by the agent's policy layer): `verify_customer({"email": "monika@example.com", "card_last4": "4242"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 

@@ -12,9 +12,9 @@
 
 **Agent:** Got it. To check this, I need to verify your account details. Could you please provide the last 4 digits of your card and the email address associated with your Paylane account?
 
-**Customer:** Sure, my card ends in 4242 and my email is alice@example.com. The transaction ID is txn_1006.
+**Customer:** Sure, my card ends in 4242 and my email is monika@example.com. The transaction ID is txn_1006.
 
-> tool call (made by the agent's policy layer): `verify_customer({"email": "alice@example.com", "card_last4": "4242"})`
+> tool call (made by the agent's policy layer): `verify_customer({"email": "monika@example.com", "card_last4": "4242"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 

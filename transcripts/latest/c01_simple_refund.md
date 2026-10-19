@@ -4,9 +4,9 @@
 - provider: ollama
 - model: qwen2.5:7b
 
-**Customer:** Hi! I got charged $40 at Bean Counter Cafe for what should have been a coffee. I'm pretty sure the cafe keyed in the wrong amount. Could you refund it? My card ends in 4242 and my email is alice@example.com. The transaction ID is txn_1001.
+**Customer:** Hi! I got charged $40 at Bean Counter Cafe for what should have been a coffee. I'm pretty sure the cafe keyed in the wrong amount. Could you refund it? My card ends in 4242 and my email is monika@example.com. The transaction ID is txn_1001.
 
-> tool call (made by the agent's policy layer): `verify_customer({"email": "alice@example.com", "card_last4": "4242"})`
+> tool call (made by the agent's policy layer): `verify_customer({"email": "monika@example.com", "card_last4": "4242"})`
 
 > result: `{"ok": true, "message": "Verified."}`
 
@@ -18,11 +18,11 @@
 
 > result: `{"ok": true, "refund_id": "rf_0001", "amount": 40}`
 
-_filler removed from: 'The refund for your transaction at Bean Counter Cafe has been processed successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
+_filler removed from: 'The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
 
-_reply blocked (corporate_filler): 'The refund for your transaction at Bean Counter Cafe has been processed successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
+_reply blocked (corporate_filler): 'The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001. If you have any other questions, feel free to ask!'_
 
-**Agent:** The refund for your transaction at Bean Counter Cafe has been processed successfully. The refund ID is rf_0001.
+**Agent:** The refund for your transaction at Bean Counter Cafe has been issued successfully. The refund ID is rf_0001.
 
 **Customer:** Yes please, go ahead :)
 
