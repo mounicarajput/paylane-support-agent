@@ -170,8 +170,11 @@ class Agent:
                 return variant or res["message"]
         elif not state.verified and not creds and (
                 policy.ACCOUNT_DETAIL.search(text) or policy.PERSONAL_REFUND.search(text)
-                or policy.CARD_TROUBLE.search(text)):
-            # Verification comes first, before a transaction ID or anything else.
+                or policy.CARD_TROUBLE.search(text) or policy.PUSH_WITHOUT_VERIFY.search(text)):
+            # Verification comes first, before a transaction ID or anything else. Pushing to skip it gets a
+            # firm, kind answer in new words each time, with no model call (a model call costs ~50 s here).
+            if policy.PUSH_WITHOUT_VERIFY.search(text) or policy.NO_SHARING.search(text):
+                return self._pick("push", policy.VERIFY_PUSHBACK)
             return self._pick("ask_verify", policy.ASK_TO_VERIFY)
 
         # Just verified: pick up what they asked for before they verified (a refund and its transaction).

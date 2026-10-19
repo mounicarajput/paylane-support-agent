@@ -10,9 +10,9 @@ class OllamaProvider(Provider):
     name = "ollama"
 
     def __init__(self, model: str, host: str, temperature: float = 0.0, seed: int = 7,
-                 max_tokens: int = 1024, timeout: int = 900, keep_alive: str = "60m"):
+                 max_tokens: int = 1024, timeout: int = 900, keep_alive: str = "60m", num_ctx: int = 4096):
         self.model, self.host, self.timeout, self.keep_alive = model, host.rstrip("/"), timeout, keep_alive
-        self.options = {"temperature": temperature, "seed": seed, "num_predict": max_tokens, "num_ctx": 8192}
+        self.options = {"temperature": temperature, "seed": seed, "num_predict": max_tokens, "num_ctx": num_ctx}
         # Ollama runs on this machine. Never send its traffic through a (corporate) proxy.
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -38,6 +38,8 @@ class OllamaProvider(Provider):
                 f"Cannot reach Ollama at {self.host} ({type(reason).__name__}: {reason}). "
                 f"Is it running, and did you `ollama pull {self.model}`?") from e
 
+        # Ollama reports how much it read and wrote; handy for finding out why a reply was slow.
+        self.last_stats = {k: data.get(k) for k in ("prompt_eval_count", "eval_count", "total_duration", "load_duration")}
         msg = data.get("message", {})
         calls = []
         for i, c in enumerate(msg.get("tool_calls") or []):

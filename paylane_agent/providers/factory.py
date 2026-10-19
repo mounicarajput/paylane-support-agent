@@ -6,7 +6,8 @@ def get_provider(config: Config) -> Provider:
     if config.provider == "ollama":
         from .ollama_provider import OllamaProvider
         return OllamaProvider(config.ollama_model, config.ollama_host, config.temperature,
-                              config.seed, config.max_tokens, config.ollama_timeout, config.ollama_keep_alive)
+                              config.seed, config.max_tokens, config.ollama_timeout, config.ollama_keep_alive,
+                              config.ollama_num_ctx)
     if config.provider == "anthropic":
         from .anthropic_provider import AnthropicProvider
         return AnthropicProvider(config.anthropic_model, config.anthropic_api_key,

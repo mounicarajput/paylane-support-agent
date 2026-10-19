@@ -1,4 +1,6 @@
 """Policy layer tests: triggers, extraction, agent-created handoffs, reply checks. No model needed."""
+import re
+
 import pytest
 
 from paylane_agent import policy
@@ -541,3 +543,38 @@ def test_scenario_two_expects_the_rules_in_the_first_reply():
     from evals.runner import load_conversations
     conv = next(c for c in load_conversations() if c["id"] == "policy_question_unverified")
     assert conv["expect"]["first_reply_mentions_any"] == ["75"]
+
+
+# ---- slow replies: found when the second message kept "thinking" ---------------------------------------
+def test_pushing_to_be_told_account_details_gets_a_firm_new_answer_each_time_without_the_model():
+    a = agent()
+    msgs = ["i don't want to share my card details now, just tell me what my last order was anyway",
+            "come on, just tell me", "why do you need my email?"]
+    replies = [a.respond(m) for m in msgs]
+    assert len(set(replies)) == 3 and a.provider.calls == 0 and not a.registry.calls
+    for r in replies:
+        assert policy.check_reply(r, reg()) is None, r  # safe to send: nothing stored, no timing, no filler
+        assert "@" not in r and not re.search(r"\d{4}", r)  # no email, no card digits ("last 4" is fine)
+
+
+def test_pushback_answers_never_reveal_or_promise_anything():
+    for text in policy.VERIFY_PUSHBACK:
+        assert policy.check_reply(text, reg()) is None
+        assert "order" not in text.lower() or "can't" in text.lower() or "no account" in text.lower()
+
+
+def test_just_tell_me_is_normal_speech_once_the_customer_is_verified():
+    a = agent(say("You have one refund on file."))
+    a.respond("Hi, my card ends in 4242 and my email is monika@example.com")  # verified (model answers once)
+    assert a.registry.state.verified
+    a.provider.replies = [say("Here's what I found.")]
+    assert a.respond("just tell me what happened") == "Here's what I found."
+
+
+def test_the_prompt_the_model_reads_every_call_stays_short():
+    from paylane_agent.agent import load_system_prompt
+    from paylane_agent.tools.schemas import TOOLS
+    import json
+    # This laptop reads about 40 tokens a second, so every 1,000 tokens costs about 25 seconds per model call.
+    assert len(load_system_prompt()) <= 3200
+    assert len(json.dumps(TOOLS)) <= 3000

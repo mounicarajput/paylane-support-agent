@@ -151,6 +151,7 @@ def test_ollama_provider_keeps_the_model_loaded_and_waits_long_enough():
         assert provider.timeout >= 900  # was 300, which a cold 7B model on a laptop could exceed
         provider.chat("x", [{"role": "user", "content": "hi"}], [])
         assert seen["body"]["keep_alive"] == "60m"  # otherwise Ollama unloads the model after ~5 idle minutes
+        assert seen["body"]["options"]["num_ctx"] == 4096  # a smaller context uses less of a nearly full RAM
     finally:
         server.shutdown()
         server.server_close()

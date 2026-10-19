@@ -49,6 +49,20 @@ POLICY_QUESTION = re.compile(
     r"\bwhat('s| is| are) (the |your )?(rules?|limits?)\b|\bis there (a |any )?(limit|cap)\b", I)
 NO_SHARING = re.compile(r"\b(don'?t|do not|won'?t|not going to|rather not|no)\b[^.?!]{0,25}\b(share|give|type|send|provide)\b", I)
 
+# An unverified customer pushing to be told account details anyway ("just tell me", "come on", "why do you need it").
+PUSH_WITHOUT_VERIFY = re.compile(
+    r"\b(just|please|come on)\b[^.?!]{0,12}\b(tell|show|give) me\b|\banyway\b|\bwithout (verif|giving|sharing|the check)|"
+    r"\bwhy (do|would) you need\b|\bwhy (do i|should i)\b[^.?!]{0,15}\b(verify|share|give|send)\b|\bskip (the )?(verif|check)", I)
+# Said in different words each time. Firm, kind, no stored values, no timing.
+VERIFY_PUSHBACK = [
+    "I understand, and I'm sorry it's a hassle. I can't share anything about an account before I've checked the "
+    "card's last 4 digits and the email. It keeps your account safe.",
+    "I can't make an exception on this one. Without that check, anyone could read your account. I can still explain "
+    "how refunds work any time.",
+    "That's firm on my side: no account details before the check. If you'd rather not share them here, I can still "
+    "answer questions about the refund rules.",
+]
+
 # "I need my refund", "refund it", "can I get my money back": a request for a refund, not a question about them.
 PERSONAL_REFUND = re.compile(
     r"\b(my|me|i)\b[^.?!]{0,30}\b(refund\w*|money back|reimburse\w*)\b|"
