@@ -19,10 +19,12 @@ A small open-source model (`qwen2.5:7b`, running locally) holds the conversation
 
 ## Where it stands
 
-- A scripted run of the 12 scenarios passes 12 of 12 (247/247 checks) on `qwen2.5:7b`, against a target of 0.70. `python -m evals.runner` reproduces it. The conversations I typed myself in the CLI, with the failures the agent's safety layer caught, are in `transcripts/recorded/`.
+- I typed all 12 scenarios myself in the CLI against the live model, in my own words ([transcripts/recorded](transcripts/recorded/)). **10 of 12 passed** as recorded, against a target of 0.70. The two that failed were repeated replies, and both are fixed since.
+- Eight failures came up while I was recording and testing. Each is written up with its real transcript and its fix in [docs/failure_and_fix.md](docs/failure_and_fix.md). Three of them passed every check at the time and were caught by reading the transcript. Scenarios 3, 4, 7, 8 and 11 have not been recorded again since their fixes.
+- A scripted run of the same 12 scenarios, repeated on the final code, passes 12 of 12 (260/260 checks). `python -m evals.runner` reproduces it. It is the set I tuned against, so it says less than the typed recordings.
 - My first run scored 2 of 12. The model rarely handed off when it should, and it made up ticket numbers. Fixing that meant moving the policy decisions out of the prompt and into code.
-- Please don't read 12/12 as "this works on anything." I built and tuned the agent against these same 12 conversations, and in several of them the code, not the model, decides the outcome.
-- There are also 158 deterministic tests. They use fake models, so they prove the code and the checks work. They say nothing about the live model. The live results are only the transcripts.
+- Please don't read these scores as "this works on anything." I tuned the agent against these same 12 scenarios, and in several of them the code, not the model, decides the outcome.
+- There are also 213 deterministic tests. They use fake models, so they prove the code and the checks work. They say nothing about the live model. The live results are only the transcripts.
 
 ## How it works
 
@@ -37,6 +39,10 @@ It won't unfreeze a card, refund a pending charge, refund over $75 or at 30+ day
 ## Example conversation
 
 A real run on `qwen2.5:7b`, using messages typed into the web UI, including a frustrated customer who asks for a human. The agent verifies first, refunds only what the policy allows, hands off when asked, and never promises a response time.
+
+![The agent in the web UI. The side panel shows the verification state and every tool call.](docs/images/web-ui.png)
+
+The same conversation as text:
 
 > **Customer:** give me refund
 > **Agent:** I can help with that once I've verified you. Please send the last 4 digits of your card and the email on your account.
@@ -92,7 +98,7 @@ If you only want to check the code without a model, `python -m pytest -q` runs e
 | `python -m paylane_agent replay over_limit_pushback` | Run and score one conversation |
 | `python -m paylane_agent record simple_refund` | Type a scenario yourself as the customer. The conversation is checked and saved to `transcripts/recorded/` (leave the id out to list the 12 scenarios) |
 | `python -m evals.runner` | Run all 12 scripted scenarios and write the score to `transcripts/latest` (regenerated on demand, not kept in git) |
-| `python -m pytest -q` | The 158 deterministic tests |
+| `python -m pytest -q` | The 213 deterministic tests |
 
 ## Repo map
 
@@ -117,12 +123,13 @@ docs/                 write-ups (below)
 
 - [edge_cases.md](docs/edge_cases.md): the 12 conversations and why I picked each edge case
 - [evals.md](docs/evals.md): every check and how the score is computed
-- [failure_and_fix.md](docs/failure_and_fix.md): one failure I found and how I fixed it
+- [failure_and_fix.md](docs/failure_and_fix.md): the eight failures I found while recording and testing, each with its fix and, where there is one, its transcript
 - [architecture.md](docs/architecture.md): how the pieces fit
 
 ## Known limits
 
 - The eval set is small and was used while tuning, so the score is optimistic. A held-out set of new conversations is the first thing I'd add.
+- Each typed scenario was recorded once, so there is no measure of how much runs differ. Scenarios 3, 4, 7, 8 and 11 were recorded before their fixes and need recording again.
 - A 7B model is slow and can phrase things oddly. The reply checker catches rule breaks, not awkward wording.
 - There's no tool to void a pending authorization, no arrival estimate and no human-response SLA, because the spec didn't provide them. The agent says so and doesn't guess.
 - Everything runs against mock data with a fixed clock. Real latency, retries and API errors aren't covered.

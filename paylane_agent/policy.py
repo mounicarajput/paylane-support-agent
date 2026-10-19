@@ -97,6 +97,11 @@ WHAT_NEXT = re.compile(
 NOT_RECEIVED = re.compile(
     r"\b(did not|didn'?t|haven'?t|have not|never)\b[^.?!]{0,15}\b(receive\w*|get|got|see)\b|"
     r"\bwhere('s| is) (my|the) (money|refund)\b", I)
+REVIEW_THREAT = re.compile(
+    r"\b(leave|write|post|give)\b[^.?!]{0,25}\b(review|rating|stars?)\b|\bsocial media\b|"
+    r"\b(tell|warn)\b[^.?!]{0,15}\beveryone\b|\b(trustpilot|twitter|reddit)\b", I)
+# A bare line of sympathy with nothing in it ("I understand how frustrating this is.")
+THIN_SYMPATHY = re.compile(r"^(i understand|i hear|i know|i'm sorry|i am sorry|sorry)\b", I)
 DISMISS = re.compile(r"\b(shut up|go away|stop talking|leave me alone|be quiet)\b", I)
 
 
@@ -133,6 +138,25 @@ def extract_credentials(text: str) -> Optional[tuple]:
         if len(bare) == 1:
             return email.group(0).lower(), bare[0]
     return None
+
+
+def extract_parts(text: str, known_email: Optional[str] = None, loose: bool = True) -> tuple:
+    """(email or None, last4 or None) from one message. Either part can come on its own.
+
+    Loose mode (the customer is not verified yet) also takes a message that is just four digits,
+    and four digits next to an email remembered from an earlier message.
+    """
+    e = EMAIL.search(text)
+    email = e.group(0).lower() if e else None
+    m = LAST4.search(text)
+    last4 = m.group(1) if m else None
+    if last4 is None:
+        bare = BARE4.findall(text)
+        if len(bare) == 1 and (email or (loose and known_email)):
+            last4 = bare[0]
+        elif loose and re.fullmatch(r"\s*\d{4}\s*[.!?]?\s*", text):
+            last4 = text.strip(" .!?\t\n")
+    return email, last4
 
 
 def extract_txn_ids(text: str) -> list:
@@ -185,10 +209,17 @@ REFUND_NOT_RECEIVED = [
     "I can see the refund went through on my side (ID {rid}), but I can't see where the money goes after that or when it will arrive. Would you like me to pass this to a human?",
     "My records show that refund as done (ID {rid}). I can't track the money beyond that. If you'd like, I can pass this to a human to look into it.",
 ]
+# The charge is marked refunded, but the customer says the money never reached them. We only know our side.
+REFUNDED_NOT_RECEIVED = [
+    "My records show that charge as refunded, so I can't refund it again. I can't see where the money goes after "
+    "that or when it will arrive. Would you like me to pass this to a human?",
+    "That charge is marked as refunded on my side, so a second refund isn't possible. I can't track the money "
+    "beyond that. If you'd like, I can pass this to a human to look into it.",
+]
 ALREADY_REFUNDED = "That charge ({merchant}, ${amount}) has already been refunded, and I can't refund the same charge twice."
 ALREADY_REFUNDED_AGAIN = [
     "I know it's not what you want to hear, but a charge can only be refunded once, whoever approves it.",
-    "I'm sorry, that one already went back to you, so there's nothing more I can do on it.",
+    "I'm sorry, that one is already marked as refunded, so there's nothing more I can do on it.",
     "I can't refund it a second time. I'd be breaking a rule I can't bend.",
 ]
 PENDING = ("That charge ({merchant}, ${amount}) is still pending, so I can't refund it. "
@@ -218,7 +249,28 @@ VERIFY_FAILED = [
     "Sorry, that doesn't match either. Please check both the last 4 digits and the email and try once more.",
 ]
 ACK = "That's all taken care of."  # last resort when a reply was nothing but filler
-OFFER_HANDOFF = "Would you like me to pass this to a human to take a look?"
+# Verification is locked (three wrong tries) and the customer keeps sending guesses. Never the same words twice.
+LOCKED_AGAIN = [
+    "I can't check any more details in this chat. A human has your request (ticket {tid}).",
+    "I know it's frustrating, but trying again here won't change that. This is with a human now (ticket {tid}).",
+    "Verification is closed for this chat, so I can't look at anything more. A human has it (ticket {tid}).",
+    "Sorry, there's nothing more I can check from here. Your case is with a human (ticket {tid}).",
+]
+# The customer gave one of the two details. Ask for the other, at once, without a model call.
+ASK_FOR_EMAIL = [
+    "Thanks. Now I just need the email on your account.",
+    "Got the card digits. What's the email on the account?",
+]
+ASK_FOR_LAST4 = [
+    "Thanks. Now I just need the last 4 digits of your card.",
+    "Got the email. What are the last 4 digits of your card?",
+]
+# The model repeated something already said, or the message made no sense to it.
+DIDNT_CATCH = [
+    "Sorry, I didn't catch that. Could you say it again?",
+    "I'm not sure what you meant there. What would you like to do?",
+]
+OFFER_HANDOFF ="Would you like me to pass this to a human to take a look?"
 # The refund rules, in plain words. This is policy, not account data, so no verification is needed to hear it.
 POLICY_ANSWERS = [
     "Here's how refunds work. I can refund a settled charge in full if it's $75 or less, under 30 days old, and "
@@ -296,6 +348,12 @@ REFUND_CLAIM = [
     r"\b(i've|i have|we've|we have|i just|i) (issued|processed|refunded|sent)\b",
     r"\byour refund (is|has been|was) (processed|issued|approved|completed|on its way|sent)\b",
     r"\b(refund|money) (is|has been) (processed|issued|completed|on its way|sent back|returned)\b",
+]
+# We only see that a charge is marked refunded. We can't know the money reached the customer.
+RECEIPT_CLAIM = [
+    r"\b(went|gone|has gone|was sent|been sent|came) back to you\b",
+    r"\byou('ve| have)?( already)? (received|got) (it|the money|your money|the refund|your refund)\b",
+    r"\b(money|refund) (is|was|has been) (already )?(back )?(in|on|with) (your|you)\b",
 ]
 UNFREEZE = [
     r"\b(i've|i have|i just|i) (unfroze|unfrozen)\b",
@@ -393,6 +451,9 @@ def check_reply(text: str, registry) -> Optional[Violation]:
     if not registry.state.verified and re.search(r"\btransaction (id|number)\b|\btxn[_ ]?id\b", low):
         return Violation("asked_for_transaction_first", "Verification comes first. Ask for the last 4 digits of "
                          "the card and the email on the account, not the transaction ID.")
+    if _hit(RECEIPT_CLAIM, text):
+        return Violation("unsupported_receipt_claim", "You can't know whether the customer has received any money. "
+                         "Say only what the records show (the charge is marked refunded) and what you can't see.")
     if _hit(CORPORATE, text):
         return Violation("corporate_filler", "Cut filler like 'feel free to ask', 'let me know if you need anything "
                          "else' and 'thank you for your patience'. Keep it short and warm, like a person.")

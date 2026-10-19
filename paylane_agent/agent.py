@@ -27,6 +27,13 @@ STALLED = re.compile(
     re.I)
 NUDGE = ("(Automated reminder, not from the customer.) You said you would do something but did not call a tool. "
          "Call the tool now, then tell the customer the result. Do not announce actions.")
+# The customer already asked for the refund and the charge is eligible, but the model asks "shall I proceed?".
+ASKS_PERMISSION = re.compile(
+    r"\b(would you like|do you want|shall i|should i|want me to|can i go ahead)\b[^.?!]{0,40}"
+    r"\b(proceed|go ahead|process|issue|refund|continue)\b", re.I)
+PROCEED_NUDGE = ("(Automated reminder, not from the customer.) The customer already asked for this refund and "
+                 "{txn} is eligible. Call issue_refund for {txn} now with the full amount, then tell them the "
+                 "result. Don't ask them to confirm.")
 CORRECTION = ("(Automated reminder, not from the customer.) Your last reply was not sent. Problem: {problem} "
               "Write the reply again without that.")
 
@@ -51,6 +58,8 @@ class Agent:
         self._auto_n = 0
         self._last_user = ""
         self._last_creds: Optional[tuple] = None
+        self._email: Optional[str] = None  # the customer's details, remembered across messages
+        self._last4: Optional[str] = None
         self._blocked: Optional[dict] = None  # last transaction that can't be refunded (already refunded / pending)
         self._asked_which_charge = False
         self._used: dict = {}
@@ -58,6 +67,7 @@ class Agent:
         # verification is carried out once they verify.
         self._refund_requested = False
         self._refunds_before_turn = 0
+        self._tickets_before_turn = 0
         self._pending_txn_ids: list = []
         self.registry.customer_text = []
 
@@ -68,6 +78,7 @@ class Agent:
         self._last_user = user_text
         self.registry.customer_text.append(user_text)
         self._refunds_before_turn = len(self.registry.api.refunds)
+        self._tickets_before_turn = len(self.registry.api.tickets)
         self._refund_requested |= bool(policy.PERSONAL_REFUND.search(user_text))
         for txn_id in policy.extract_txn_ids(user_text):
             if txn_id not in self._pending_txn_ids:
@@ -89,6 +100,13 @@ class Agent:
                     return self._finish(after, append=True)
                 continue
 
+            txn_ready = self._refund_ready()
+            if nudges < MAX_NUDGES and txn_ready and ASKS_PERMISSION.search(reply.text):
+                nudges += 1  # the customer already asked: hide the question and tell the model to go ahead
+                self.transcript.add("note", text=f"permission question suppressed: {reply.text!r}")
+                self.messages.append({"role": "user", "content": PROCEED_NUDGE.format(txn=txn_ready)})
+                continue
+
             if nudges < MAX_NUDGES and STALLED.search(reply.text) and not self.registry.state.handed_off:
                 nudges += 1  # hide the stalled message from the customer and prompt the model to act
                 self.transcript.add("note", text=f"stalled reply suppressed: {reply.text!r}")
@@ -108,7 +126,18 @@ class Agent:
             else:  # nothing but filler
                 problem = policy.Violation("empty_reply", "Your reply was only filler. Answer what the "
                                            "customer said, briefly.")
+            state = self.registry.state
+            if problem is None and state.handed_off and state.handoff_ticket_id not in text \
+                    and len(text.split()) <= 8 and policy.THIN_SYMPATHY.match(text):
+                # After cleaning, only a bare line of sympathy was left and the ticket was cut with the promise.
+                self.transcript.add("note", text=f"thin reply replaced: {text!r}")
+                text = self._pick("pushback", policy.PUSHBACK_AFTER_HANDOFF).format(tid=state.handoff_ticket_id)
+                self.messages[-1]["content"] = text
             if problem is None:
+                if self._already_said(text):  # never repeat an earlier reply word for word
+                    self.transcript.add("note", text=f"repeated reply replaced: {text!r}")
+                    text = self._pick("didnt_catch", policy.DIDNT_CATCH)
+                    self.messages[-1]["content"] = text
                 return self._finish(text)
             self.transcript.add("note", text=f"reply blocked ({problem.name}): {reply.text!r}")
             if corrections < MAX_CORRECTIONS:
@@ -151,6 +180,11 @@ class Agent:
         if refunds and policy.NOT_RECEIVED.search(text) and not policy.extract_txn_ids(text):
             return self._pick("not_received", policy.REFUND_NOT_RECEIVED).format(rid=refunds[-1]["refund_id"])
 
+        # A charge marked refunded, and the customer says the money never came: only say what the records show.
+        if (self._blocked and self._blocked.get("refund_reason") == "already_refunded"
+                and policy.NOT_RECEIVED.search(text) and not policy.extract_txn_ids(text)):
+            return self._pick("refunded_not_received", policy.REFUNDED_NOT_RECEIVED)
+
         # "Yes please go ahead" / "thanks" after a refund that already went through: don't say it all again.
         if refunds and len(text.split()) <= 8 and not policy.extract_txn_ids(text):
             if policy.GO_AHEAD.search(text):
@@ -158,16 +192,30 @@ class Agent:
             if policy.THANKS.search(text):
                 return self._pick("welcome", policy.YOURE_WELCOME)
 
-        creds = policy.extract_credentials(text)
+        # The two details can arrive in pieces ("4242" now, the email next). Remember both across messages
+        # while the customer is not verified. Once verified, only a message with both counts as a new check.
+        email, last4 = policy.extract_parts(text, self._email, loose=not state.verified)
+        gave_something = bool(email or last4)
+        if state.verified:
+            creds = (email, last4) if email and last4 else None
+        else:
+            self._email, self._last4 = email or self._email, last4 or self._last4
+            creds = (self._email, self._last4) if gave_something and self._email and self._last4 else None
         was_verified = state.verified
         if creds and (not state.verified or creds != self._last_creds):
             self._last_creds = creds
+            self._email, self._last4 = creds
             res = self._auto_tool("verify_customer", {"email": creds[0], "card_last4": creds[1]})
             if not res.get("ok"):
                 if res.get("locked"):
                     return policy.HANDOFF_REPLIES["verification_failed"].format(tid=res.get("ticket_id"))
                 variant = policy.VERIFY_FAILED[min(state.failed_checks - 1, len(policy.VERIFY_FAILED) - 1)]
                 return variant or res["message"]
+        elif not state.verified and gave_something and not creds:
+            # Only half of the details so far: ask for the other half straight away, no model call.
+            if self._email:
+                return self._pick("ask_last4", policy.ASK_FOR_LAST4)
+            return self._pick("ask_email", policy.ASK_FOR_EMAIL)
         elif not state.verified and not creds and (
                 policy.ACCOUNT_DETAIL.search(text) or policy.PERSONAL_REFUND.search(text)
                 or policy.CARD_TROUBLE.search(text) or policy.PUSH_WITHOUT_VERIFY.search(text)):
@@ -211,8 +259,14 @@ class Agent:
     def _after_handoff_reply(self, text: str) -> Optional[str]:
         """After a handoff the customer often pushes. The answer is always the same fact, said kindly."""
         tid = self.registry.state.handoff_ticket_id
+        if self.registry.state.locked:  # more guesses after the lock: answer in new words, no model, no new check
+            email, last4 = policy.extract_parts(text, self._email, loose=True)
+            if email or last4:
+                return self._pick("locked_again", policy.LOCKED_AGAIN).format(tid=tid)
         if policy.DISMISS.search(text):
             return self._pick("dismissed", policy.DISMISSED_AFTER_HANDOFF).format(tid=tid)
+        if policy.REVIEW_THREAT.search(text):  # a threat doesn't change the decision; say so kindly, with the ticket
+            return self._pick("pushback", policy.PUSHBACK_AFTER_HANDOFF).format(tid=tid)
         if policy.WHAT_NEXT.search(text):
             return self._pick("next", policy.WHAT_NEXT_AFTER_HANDOFF).format(tid=tid)
         if policy.SPLIT.search(text) and policy.REFUND_INTENT.search(text):
@@ -226,6 +280,8 @@ class Agent:
         state = self.registry.state
         for name, res in results:
             if name == "verify_customer" and res.get("locked") and res.get("ticket_id"):
+                if self._tickets_before_turn:  # the lock happened earlier: don't repeat the first message
+                    return self._pick("locked_again", policy.LOCKED_AGAIN).format(tid=res["ticket_id"])
                 return policy.HANDOFF_REPLIES["verification_failed"].format(tid=res["ticket_id"])
         if state.handed_off:
             return None
@@ -242,6 +298,21 @@ class Agent:
         return None
 
     # ---- helpers -------------------------------------------------------------------------
+    def _refund_ready(self) -> Optional[str]:
+        """The eligible charge the customer asked to have refunded and that has not been refunded yet."""
+        if not (self.registry.state.verified and self._refund_requested):
+            return None
+        refunded = {r["txn_id"] for r in self.registry.api.refunds}
+        for name, _args, res in reversed(self.registry.calls):
+            if name == "get_transaction" and res.get("refund_path") == "auto" and res.get("txn_id") not in refunded:
+                return res["txn_id"]
+        return None
+
+    def _already_said(self, text: str) -> bool:
+        key = re.sub(r"\W+", " ", text.lower()).strip()
+        return any(re.sub(r"\W+", " ", e["text"].lower()).strip() == key
+                   for e in self.transcript.events if e["type"] == "assistant")
+
     def _pick(self, key: str, variants: list) -> str:
         n = self._used.get(key, 0)
         self._used[key] = n + 1

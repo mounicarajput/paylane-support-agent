@@ -23,7 +23,7 @@ from .report import build_report
 from .runner import evaluate, load_conversations, numbered_name
 
 OUT_DIR = ROOT / "transcripts" / "recorded"
-DONE = {"done", "/done", "finish", "/finish"}
+DONE = {"done", "/done", "finish", "/finish", "don", "dne", "done."}  # "don" is a typo that happened for real
 QUIT = {"quit", "/quit", "exit", "/exit"}
 
 # What each kind of caught failure means, in plain words.
@@ -81,6 +81,15 @@ def caught_failures(events: list) -> list:
                 out.append((f"{FAILURES.get(name, name)}",
                             "The reply was blocked before the customer saw it; the model had to rewrite it.",
                             t.split(": ", 1)[1]))
+            elif t.startswith("permission question suppressed"):
+                out.append(("The model asked whether to go ahead, although the customer had already asked for the refund",
+                            "The agent hid the question and told the model to issue the refund.", t.split(": ", 1)[1]))
+            elif t.startswith("thin reply replaced"):
+                out.append(("After cleaning, the reply was only a line of sympathy with no ticket",
+                            "The agent replaced it with an answer that names the ticket.", t.split(": ", 1)[1]))
+            elif t.startswith("repeated reply replaced"):
+                out.append(("The model repeated something it had already said, word for word",
+                            "The agent replaced the repeat with a short 'I didn't catch that'.", t.split(": ", 1)[1]))
             elif t.startswith("timing or filler removed"):
                 out.append(("The model added filler or a promise about timing",
                             "That part was cut out of the reply before it was sent.", t.split(": ", 1)[1]))

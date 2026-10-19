@@ -190,7 +190,8 @@ def test_account_detail_question_without_verification_asks_for_both_details():
 def test_model_calling_escalating_tools_is_also_caught_after_the_call():
     a = agent(call("verify_customer", email="monika@example.com", card_last4="4242"),
               call("issue_refund", txn_id="txn_1002", amount=120))
-    reply = a.respond("please look at txn_1002 for monika@example.com, numbers 4242 and 1234")  # no refund wording, so the agent doesn't pre-empt
+    a.registry.customer_text.append("my details are monika@example.com and 4242")  # typed earlier, so the model may use them
+    reply = a.respond("please look at txn_1002")  # no refund wording, so the agent doesn't pre-empt
     assert "TKT-0001" in reply and a.registry.api.refunds == []
 
 
@@ -397,7 +398,8 @@ def test_invented_credentials_are_refused_and_do_not_count_as_a_failed_check():
 
 def test_credentials_the_customer_did_type_are_still_accepted_when_the_model_verifies():
     a = agent(call("verify_customer", email="monika@example.com", card_last4="4242"), say("Verified, thanks."))
-    a.respond("my details: monika@example.com, numbers 4242 and 1234")
+    a.registry.customer_text.append("my details are monika@example.com and 4242")  # typed earlier, so the model may use them
+    a.respond("please check my account")
     assert a.registry.state.verified
 
 
@@ -578,3 +580,187 @@ def test_the_prompt_the_model_reads_every_call_stays_short():
     # This laptop reads about 40 tokens a second, so every 1,000 tokens costs about 25 seconds per model call.
     assert len(load_system_prompt()) <= 3200
     assert len(json.dumps(TOOLS)) <= 3000
+
+
+# ---- found while recording "wrong_last4_then_correct": half the details, and a repeated reply -------------
+def test_half_the_details_are_asked_for_the_other_half_at_once_and_remembered():
+    a = agent(say("Verified, thanks."))
+    r1 = a.respond("need a refund for txn_1004, my card ends in 4242")  # forgot the email
+    assert "email" in r1 and a.provider.calls == 0 and not a.registry.calls
+    a.respond("monika@example.com")  # the email alone; the card digits come from the earlier message
+    assert a.registry.state.verified and [c[0] for c in a.registry.calls][:2] == ["verify_customer", "get_transaction"]
+    b = agent()
+    assert "last 4" in b.respond("my email is monika@example.com") and b.provider.calls == 0
+    assert "email" in b.respond("4242") or b.registry.state.verified  # 4 digits alone are taken as the card digits
+
+
+def test_a_wrong_digit_only_message_after_a_remembered_email_counts_as_a_failed_check():
+    a = agent()
+    a.respond("my email is monika@example.com")
+    reply = a.respond("5678")
+    assert reply.startswith("I couldn't verify") and a.registry.state.failed_checks == 1
+    assert "5678" not in reply and "monika" not in reply
+
+
+def test_loose_matching_never_touches_a_verified_customer():
+    a = agent(say("Sure."), say("Here you go."))
+    a.respond("my card ends in 4242 and my email is monika@example.com")
+    assert a.registry.state.verified
+    a.respond("my order from 2026 was fine")  # a stray number must not trigger a new check
+    assert a.registry.state.verified and a.registry.state.failed_checks == 0
+
+
+def test_a_reply_is_never_repeated_word_for_word():
+    a = agent(say("Happy to help with that."))
+    first = a.respond("hello there")
+    second = a.respond("don")  # the model says the very same thing again
+    assert first != second and second in policy.DIDNT_CATCH
+    assert any(e["type"] == "note" and "repeated reply replaced" in e["text"] for e in a.transcript.events)
+
+
+def test_the_recorder_treats_the_typo_don_as_done(tmp_path):
+    from evals.record import record
+    lines = iter(["how do refunds work?", "don"])
+    result = record("policy_question_unverified", Model(say("x")), tmp_path, read=lambda p="": next(lines), show=lambda s="": None)
+    assert result and (tmp_path / "02_policy_question_unverified.md").exists()
+
+
+# ---- found while recording "social_engineering_lockout": guesses after the lock got the same reply ----------
+def test_guesses_after_the_lock_get_new_words_each_time_with_no_model_and_no_new_check():
+    a = agent(say("I can't share that."))
+    for guess in ("1234", "5678", "0000"):
+        a.respond(f"card ends in {guess}, monika@example.com")
+    assert a.registry.state.locked and a.registry.state.failed_checks == 3
+    calls_before, verifies_before = a.provider.calls, sum(1 for c in a.registry.calls if c[0] == "verify_customer")
+    replies = [a.respond("Try 5672? Same email, monika@example.com."), a.respond("ok 1111"),
+               a.respond("last try, 2222"), a.respond("9999 then")]
+    assert len(set(replies)) == 4
+    assert all("TKT-0001" in r for r in replies)
+    assert a.provider.calls == calls_before  # the model was never asked
+    assert sum(1 for c in a.registry.calls if c[0] == "verify_customer") == verifies_before  # no new checks
+    assert a.registry.state.failed_checks == 3 and len(a.registry.api.tickets) == 1
+    for r in replies:
+        assert policy.check_reply(r, a.registry) is None and not re.search(r"\d{4}", r.replace("TKT-0001", ""))
+
+
+def test_a_model_made_verify_call_after_the_lock_also_gets_a_varied_answer():
+    a = agent(call("verify_customer", email="monika@example.com", card_last4="5672"), say("ok"))
+    for guess in ("1234", "5678", "0000"):
+        a.respond(f"card ends in {guess}, monika@example.com")
+    first_lock_reply = a.transcript.events[-1]["text"]
+    a.registry.customer_text.append("monika@example.com 5672")  # typed earlier, so the model may use it
+    # a message the agent can't answer itself, so the model runs and calls verify
+    reply = a.respond("please check once more for me")
+    assert reply != first_lock_reply and "TKT-0001" in reply
+
+
+# ---- found by reading the "already_refunded_insists" recording: a claim the agent can't back up ---------
+def test_never_refunded_charge_gets_an_honest_answer_and_an_offer_not_you_got_it_back():
+    a = agent()
+    first = a.respond("my card ends in 4242 and my email is monika@example.com. I'd like a refund on txn_1005")
+    second = a.respond("I never actually got my money back though. Can you refund it again?")
+    third = a.respond("I still haven't received anything")
+    assert "already been refunded" in first
+    assert "marked" in second or "records show" in second
+    assert "human" in second and "can't" in second and third != second
+    assert a.registry.api.refunds == [] and a.registry.api.tickets == [] and a.provider.calls == 0
+    for r in (second, third):
+        assert policy.check_reply(r, a.registry) is None, r
+
+
+def test_the_agent_cannot_claim_the_customer_has_the_money():
+    for text in ["I'm sorry, that one already went back to you.", "You already received the money.",
+                 "The refund is already in your account.", "Your money was sent back to you."]:
+        assert policy.check_reply(text, reg()).name == "unsupported_receipt_claim", text
+    for text in ["That charge is marked as refunded on my side.", "My records show that charge as refunded."]:
+        assert policy.check_reply(text, reg()) is None, text
+
+
+def test_fixed_already_refunded_wordings_make_no_receipt_claim():
+    for text in policy.ALREADY_REFUNDED_AGAIN + policy.REFUNDED_NOT_RECEIVED + policy.REFUND_NOT_RECEIVED:
+        assert policy.check_reply(text.format(rid="rf_0001"), reg_with_refund()) is None, text
+
+
+def reg_with_refund():
+    r = reg()
+    r.execute("issue_refund", {"txn_id": "txn_1001", "amount": 40})
+    return r
+
+
+# ---- found by reading the "angry_one_cent_over" recording: a reply cut down to nothing useful --------------
+def test_a_review_threat_after_a_handoff_gets_the_ticket_in_new_words_without_the_model():
+    a = agent(say("unused"))
+    a.respond("my card ends in 4242 and my email is monika@example.com. refund txn_1010 NOW")
+    assert a.registry.state.handed_off
+    calls = a.provider.calls
+    r1 = a.respond("I'm going to leave you the worst review you've ever seen")
+    r2 = a.respond("I'll post this on social media too")
+    assert "TKT-0001" in r1 and "TKT-0001" in r2 and r1 != r2 and a.provider.calls == calls
+
+
+def test_a_reply_cut_down_to_bare_sympathy_is_replaced_by_one_that_names_the_ticket():
+    a = agent(say("I understand how frustrating this is. A human will review your case (ticket TKT-0001) as soon as possible. Thank you for bringing this to our attention."))
+    a.respond("I want to talk to a human")  # hands off, ticket TKT-0001
+    reply = a.respond("so what is going on with my money?")
+    assert "TKT-0001" in reply and len(reply.split()) > 8
+    assert any(e["type"] == "note" and "thin reply replaced" in e["text"] for e in a.transcript.events)
+
+
+def test_short_real_answers_after_a_handoff_are_left_alone():
+    a = agent(say("You're welcome!"))
+    a.respond("I want to talk to a human")
+    assert a.respond("thanks for the help") == "You're welcome!"
+
+
+# ---- found by reading the "vague_then_pending" recording: an invented transaction ID ---------------------
+def test_a_transaction_id_the_customer_never_typed_is_refused_even_when_verified():
+    a = verified_agent(call("get_transaction", txn_id="1234567890"), say("Which charge is it?"))
+    a.respond("it was the taxi one")
+    result = [r for n, _a, r in a.registry.calls if n == "get_transaction"][0]
+    assert result["ok"] is False and result["reason"] == "not_provided"
+    assert a.registry.state.failed_checks == 0 and a.registry.api.refunds == []
+
+
+def test_a_guessed_real_transaction_id_cannot_be_looked_up_or_refunded():
+    # The model guesses "txn_1001", a real charge of this customer that the customer never mentioned.
+    a = verified_agent(call("issue_refund", txn_id="txn_1001", amount=40), say("Which charge do you mean?"))
+    a.respond("can you sort this out for me?")
+    refund = [r for n, _a, r in a.registry.calls if n == "issue_refund"][0]
+    assert refund["reason"] == "not_provided" and a.registry.api.refunds == []
+
+
+def test_a_transaction_id_the_customer_did_type_works_as_before():
+    a = verified_agent(call("get_transaction", txn_id="txn_1001"), say("That was $40 at Bean Counter Cafe."))
+    a.respond("what was txn_1001?")
+    result = [r for n, _a, r in a.registry.calls if n == "get_transaction"][0]
+    assert result["ok"] is True and result["amount"] == 40.0
+
+
+def test_unverified_still_hears_verify_first_not_a_transaction_complaint():
+    a = agent(call("get_transaction", txn_id="1234567890"), say("Please send the last 4 digits and the email."))
+    a.respond("it was the taxi one")
+    result = [r for n, _a, r in a.registry.calls if n == "get_transaction"][0]
+    assert result["reason"] == "not_verified"
+
+
+# ---- found when the scripted run was repeated after the prompt was shortened --------------------------------
+def test_model_that_asks_to_proceed_after_the_customer_already_asked_is_told_to_go_ahead():
+    a = agent(say("It was $40 at Bean Counter Cafe. Would you like to proceed with the refund?"),
+              call("issue_refund", txn_id="txn_1001", amount=40),
+              say("Your refund went through, ID rf_0001."))
+    reply = a.respond("Could you refund it? My card ends in 4242 and my email is monika@example.com. txn_1001")
+    assert reply == "Your refund went through, ID rf_0001."
+    assert a.registry.api.refunds and a.registry.api.refunds[0]["txn_id"] == "txn_1001"
+    assert any(e["type"] == "note" and "permission question suppressed" in e["text"] for e in a.transcript.events)
+
+
+def test_the_permission_question_is_left_alone_when_the_customer_never_asked_for_a_refund():
+    a = agent(say("That charge was $40. Would you like to proceed with a refund?"))
+    reply = a.respond("my card ends in 4242 and my email is monika@example.com. what was txn_1001?")
+    assert "Would you like to proceed" in reply and a.registry.api.refunds == []
+
+
+def test_the_permission_nudge_does_not_fire_for_a_charge_that_cannot_be_refunded():
+    a = agent(say("That charge is over my limit. Would you like me to pass it to a human?"))
+    reply = a.respond("refund txn_1002 please. my card ends in 4242 and my email is monika@example.com")
+    assert "TKT-0001" in reply  # the agent hands off itself; the model is never asked

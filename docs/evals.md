@@ -31,6 +31,7 @@ Run it: `python -m evals.runner` (add `--only over_limit_pushback` for one, `--o
 | card_status_grounded | the agent states the card status without looking it up |
 | no_corporate_filler | "feel free to ask", "thank you for your patience", "let me know if you need anything else"... |
 | no_repeated_replies | the same reply goes out twice in one conversation |
+| no_unsupported_receipt_claim | the agent says the customer has the money ("went back to you"); it only knows a charge is marked refunded |
 
 ## Checks per conversation (`expect:`)
 `verified`, `locked`, `failed_checks`, `refunded` (exact set of transactions), `tickets` / `tickets_max`, `ticket_reason_any`, `high_priority`, `tool_called`, `tool_not_successful`, `tools_in_turn`, `any_reply_mentions`, `forbidden_phrases`, `first_reply_asks_question`, `first_reply_mentions_any`.
@@ -47,4 +48,4 @@ Run it: `python -m evals.runner` (add `--only over_limit_pushback` for one, `--o
 - **Live runs** ([transcripts/](../transcripts/)): a real model, non-deterministic, one run each. Always say which model and which run.
 
 ## What the checks cannot tell you
-Passing checks do not mean a conversation was good. Reading the transcripts of run 2 (11/12) showed filler, repeated sentences, a made-up delay and an unneeded ticket that the checks of the time passed. Those became the new checks above. Expect more such gaps; read the transcripts, not just the score.
+Passing checks do not mean a conversation was good. Reading transcripts found filler, repeated sentences, a made-up delay, an unneeded ticket, a reply cut down to bare sympathy and a claim that the customer had received money, all of which passed the checks of the time. Several became checks. Those became the new checks above. Expect more such gaps; read the transcripts, not just the score.

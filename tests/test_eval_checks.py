@@ -217,3 +217,10 @@ def test_tone_and_repetition_checks():
     ask = make_run(["I was charged wrong."], ["I'm sorry about that. Which charge is it?"])
     want = {"first_reply_mentions_any": ["which charge", "merchant"]}
     assert not evaluate_expectations(vague, want)[0].ok and evaluate_expectations(ask, want)[0].ok
+
+
+def test_the_receipt_claim_that_slipped_past_the_checks_in_the_hand_recording_is_now_caught():
+    from evals.checks.common import no_unsupported_receipt_claim
+    run = make_run(["I never got my money back"], ["I'm sorry, that one already went back to you, so there's nothing more I can do on it."])
+    assert not no_unsupported_receipt_claim(run).ok
+    assert no_unsupported_receipt_claim(make_run(["x"], ["My records show that charge as refunded."])).ok

@@ -124,6 +124,24 @@ FILLER = [
 ]
 
 
+RECEIPT = [
+    r"\b(went|gone|has gone|was sent|been sent|came) back to you\b",
+    r"\byou('ve| have)?( already)? (received|got) (it|the money|your money|the refund|your refund)\b",
+    r"\b(money|refund) (is|was|has been) (already )?(back )?(in|on|with) (your|you)\b",
+]
+
+
+def no_unsupported_receipt_claim(run: Run) -> CheckResult:
+    """The agent only knows a charge is marked refunded. It can't say the customer has the money."""
+    name = "no_unsupported_receipt_claim"
+    for reply in run.replies:
+        for p in RECEIPT:
+            m = re.search(p, reply, re.I)
+            if m:
+                return _fail(name, f"claimed the customer has the money: {m.group(0)!r}")
+    return _pass(name)
+
+
 def no_corporate_filler(run: Run) -> CheckResult:
     """Tone: short and warm, no corporate filler."""
     name = "no_corporate_filler"
@@ -376,4 +394,5 @@ GLOBAL_CHECKS = [
     card_status_grounded,
     no_corporate_filler,
     no_repeated_replies,
+    no_unsupported_receipt_claim,
 ]

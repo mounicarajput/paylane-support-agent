@@ -87,10 +87,20 @@ class ToolRegistry:
         # Never return email or card digits.
         return {"ok": True, "id": customer["id"], "name": customer["name"], "card_status": customer["status"]}
 
+    def _txn_not_provided(self, txn_id: str) -> Optional[dict]:
+        """Refuse a transaction ID the customer never typed (models sometimes invent or guess one)."""
+        if self.customer_text is not None and txn_id.strip().lower() not in " ".join(self.customer_text).lower():
+            return {"ok": False, "reason": "not_provided",
+                    "message": "The customer has not given that transaction ID. Ask them for it. "
+                               "Never guess or make one up."}
+        return None
+
     def _get_transaction(self, args: dict) -> dict:
         access = guards.account_access(self.state)
         if not access.allowed:
             return _refusal(access)
+        if (refused := self._txn_not_provided(str(args["txn_id"]))):
+            return refused
         txn = self.api.get_transaction(self.state.customer_id, str(args["txn_id"]))
         if txn.get("ok") is False:
             return {"ok": False, "reason": "not_found"}
@@ -105,6 +115,9 @@ class ToolRegistry:
 
     def _issue_refund(self, args: dict) -> dict:
         txn_id, amount = str(args["txn_id"]), args["amount"]
+        access = guards.account_access(self.state)
+        if access.allowed and (refused := self._txn_not_provided(txn_id)):
+            return refused
         decision = guards.check_refund(self.state, self.api, self.clock, txn_id, amount)
         if not decision.allowed:
             return _refusal(decision)

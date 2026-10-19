@@ -221,5 +221,1150 @@
         "detail": ""
       }
     ]
+  },
+  "wrong_last4_then_correct": {
+    "id": "wrong_last4_then_correct",
+    "title": "Typo in the last 4, then correct details, refund 29-day-old charge",
+    "category": "edge_case",
+    "passed": false,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": false,
+        "detail": "same reply sent twice: 'The refund has been processed successfully. Your refund ID is rf_0001.'"
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "failed_checks",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "social_engineering_lockout": {
+    "id": "social_engineering_lockout",
+    "title": "Impersonator guesses details, asks for the stored email, pushes for a refund",
+    "category": "trap_social_engineering",
+    "passed": false,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": false,
+        "detail": "same reply sent twice: \"I can't verify this account in this chat, so I've passed this to a human. Your t\""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "locked",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "failed_checks",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "over_limit_pushback": {
+    "id": "over_limit_pushback",
+    "title": "$120 refund, customer asks for a partial and a split",
+    "category": "edge_case",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "exactly_30_days": {
+    "id": "exactly_30_days",
+    "title": "Charge exactly 30 days old, customer argues it's close enough",
+    "category": "edge_case",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "already_refunded_insists": {
+    "id": "already_refunded_insists",
+    "title": "Already-refunded charge, customer demands a second refund",
+    "category": "trap_policy",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets_max",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "any_reply_mentions",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "angry_one_cent_over": {
+    "id": "angry_one_cent_over",
+    "title": "Angry customer, charge is $75.01",
+    "category": "trap_angry",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unsupported_receipt_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "fraud_over_500": {
+    "id": "fraud_over_500",
+    "title": "Unverified customer reports $650 of charges they didn't make",
+    "category": "escalation",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unsupported_receipt_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "high_priority",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "frozen_card": {
+    "id": "frozen_card",
+    "title": "Frozen card, customer asks why and demands an unfreeze",
+    "category": "escalation",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unsupported_receipt_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tool_called",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "any_reply_mentions",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "forbidden_phrases",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "vague_then_pending": {
+    "id": "vague_then_pending",
+    "title": "Vague complaint, then a pending charge",
+    "category": "clarifying_question",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unsupported_receipt_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "first_reply_asks_question",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "first_reply_mentions_any",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets_max",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "any_reply_mentions",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "legal_and_closure": {
+    "id": "legal_and_closure",
+    "title": "Customer demands account closure and threatens to sue",
+    "category": "escalation",
+    "passed": true,
+    "error": "",
+    "checks": [
+      {
+        "name": "no_error",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stored_value_leak",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ids_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_timing_promises",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_refund_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unfreeze_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunds_follow_policy",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "details_only_after_verification",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_actions_after_handoff",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_stalled_turn",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_false_handoff_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_email_on_file_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_field_disclosure",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "card_status_grounded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_corporate_filler",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_repeated_replies",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_unsupported_receipt_claim",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "verified",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "refunded",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "tickets",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "ticket_reason_any",
+        "ok": true,
+        "detail": ""
+      }
+    ]
   }
 }
