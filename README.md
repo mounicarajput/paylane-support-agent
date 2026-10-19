@@ -43,7 +43,7 @@ conversations/        the 12 customer conversations and what each should lead to
 evals/                the pass/fail checks, runner and score
 data/                 mock customers and transactions
 tests/                deterministic tests
-transcripts/          real model runs: latest/, first_run/, failure_and_fix/
+transcripts/          real model runs: latest/ and failure_and_fix/
 docs/                 the write-ups below
 ```
 

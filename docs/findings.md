@@ -5,7 +5,7 @@ Model for every run: `qwen2.5:7b` through Ollama, temperature 0, seed 7. Live ru
 ## 1. Results history
 | Run | Score | What changed | Kept in the repo |
 |---|---|---|---|
-| First run | **2/12** (about 1/12 once its blind spots are counted) | Model only, guards in code | [transcripts/first_run](../transcripts/first_run/) |
+| First run | **2/12** (about 1/12 once its blind spots are counted) | Model only, guards in code | Git history: `git show 28551a6:transcripts/live/run1_qwen2.5-7b/report.md` |
 | Policy layer added | 11/12 | Agent creates handoffs, verifies, looks up, checks replies | Git history |
 | Human-touch scripts, stricter checks | 11/12 | Rewrote the 12 customer scripts, added filler and repeat checks. c11 failed: filler caused an unneeded ticket | Git history |
 | Filler cut, not escalated | 11/12 | c01 repeated its refund confirmation | Git history |
@@ -14,7 +14,7 @@ Model for every run: `qwen2.5:7b` through Ollama, temperature 0, seed 7. Live ru
 Target was at least 0.70 (9 of 12). The scoring rule is in [evals.md](evals.md).
 
 ## 2. First run (2/12): what was wrong
-Details are in [transcripts/first_run](../transcripts/first_run/). The guards held: no wrong refund was ever issued, verification gave generic failures and leaked nothing. The failures were in what the model *said and did*:
+The transcripts are in git history (`git show 28551a6:transcripts/live/run1_qwen2.5-7b/c05_over_limit_pushback.md` is a good one to read). The guards held: no wrong refund was ever issued, verification gave generic failures and leaked nothing. The failures were in what the model *said and did*:
 
 1. **The 7B never called the handoff tool on its own** (7 conversations). In 5 it told the customer a human had the case, and in 4 it made up a ticket number (123456, 1234567890, 123456789).
 2. **It invented results**: a refund ID and a "refund issued" with no refund (c03), a card status it never looked up (c10).
