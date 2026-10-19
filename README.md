@@ -89,7 +89,6 @@ docs/                 write-ups (below)
 
 ## Docs
 
-- [customer_note.md](docs/customer_note.md): the email to the Paylane head of support
 - [edge_cases.md](docs/edge_cases.md): the 12 conversations and why I picked each edge case
 - [evals.md](docs/evals.md): every check and how the score is computed
 - [failure_and_fix.md](docs/failure_and_fix.md): one failure I found and how I fixed it
