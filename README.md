@@ -133,8 +133,3 @@ docs/                 write-ups (below)
 - A 7B model is slow and can phrase things oddly. The reply checker catches rule breaks, not awkward wording.
 - There's no tool to void a pending authorization, no arrival estimate and no human-response SLA, because the spec didn't provide them. The agent says so and doesn't guess.
 - Everything runs against mock data with a fixed clock. Real latency, retries and API errors aren't covered.
-
-## AI assistance
-
-I used claude to help write code and tests. I made the design decisions (policy in code, verification as trusted state, Model tuning ), wrote the 12 conversations.
-
